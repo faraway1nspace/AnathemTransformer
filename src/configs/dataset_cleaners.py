@@ -3,6 +3,7 @@ from math import prod
 from typing import Tuple, Union, Dict, List, Any
 from src.configs.dataset_templates import *
 
+
 def random_by_char(text:str, take:int=3, charlim:int=10):
     """Pseudo random text based on an imput text."""
     nums = [ord(ch) for ch in 'xqz'+text.replace(' ','')[:charlim]][(-1*take):]
@@ -74,7 +75,6 @@ def clean_finer139_for_mlm(x:Dict[str,Any])->Dict[str,str]:
         template = TEMPLATE_FINER139[which_take % len(TEMPLATE_FINER139)]
         text = template.replace("{NUMBER}",tnumber).replace("{ANSWER}",ansclass).replace("{PREFIX}",ansprefix).replace('{PASSAGE}',passage)
         return {'text':text}
-
 
 
 def clean_stream_refinedweb(x):
@@ -455,4 +455,321 @@ def clean_player1book3(x):
     if len(text)>=4000:
         text = text[3000:]
     x.update({'text':text})
+    return x
+
+
+def clean_govreportqa(x):
+    """Clean govreport for QA task."""
+    q_raw = x['question_summary_pairs']['question']
+    a_raw = x['question_summary_pairs']['summary']
+    if len(q_raw)==1:
+        q_concat = q_raw[0]
+        a_concat = a_raw[0]
+    elif len(q_raw)<=3 and len(q_raw)>1:
+        q_proc = [q[0].lower() + q[1:].strip('?') for q in q_raw]
+        q_concat = ', '.join(q_proc[:-1]) + ', and ' + q_proc[-1] + '?'
+        a_concat = ' '.join(a_raw)
+    else:
+        q_raw = q_raw[:2] + [random.choice(q_raw[2:])]
+        q_proc = [q[0].lower() + q[1:].strip('?') for q in q_raw]
+        q_concat = ', '.join(q_proc[:-1]) + ', and ' + q_proc[-1] + '?'
+        a_concat = ' '.join(a_raw)
+    x['query']=q_concat
+    x['positives']=[a_concat]
+    x['negatives']=[]
+    x['type'] = 'qa_triplet'
+    return x
+
+
+def filter_dictionary(x):
+    """Get definitions of only medium sized words with large definitions."""
+    if x['word'] is None:
+        return False
+    return len(x['definition'])>100 and len(x['word'].replace(" ",''))>=4
+
+
+def clean_dictionary(x):
+    """Converts a dictionary term into a question, sampling randomly from 20 template questions."""
+    idx_random_question_template = ord(x['definition'].replace(' ','')[-6]) % len(list_of_dictionary_paraphrases)
+    question_template =LIST_OF_DICTIONARY_PARAPHRASES[idx_random_question_template]
+    x['query'] = question_template % x['word']
+    x['positives'] = [x['definition']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+
+def clean_webglmqa(x):
+    x['query']=x['question']
+    x['positives'] = [x['answer']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+
+def clean_stream_PAQ_pairs(x):
+    x['query'] = x['set'][0]+'?'
+    x['positives'] = [x['set'][1]]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_stream_finance_alpaca(x):
+    x['query'] = x['instruction']
+    x['positives'] = [x['output']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_stream_wiki_qa(x):
+    x['query'] = x['question']
+    is_pos = x['label']
+    answer = x['answer']
+    pos = [answer] if is_pos else []
+    neg = [answer] if (not is_pos) else []
+    x['positives'] = pos
+    x['negatives'] = neg
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_stream_oa_stackexchange(x):
+    x['query'] = x['INSTRUCTION']
+    x['positives'] = [x['RESPONSE']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_stream_sciqa(x):
+    x['query'] = x['question']
+    x['positives'] = [x['support']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_lfqa(x):
+    x['query'] = x['question']
+    x['positives'] = [x['answer']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def filter_os_stackexchange(x):
+    return x['SOURCE'] in STACKEXCHANGE_NONQUANT_DOMAINS
+
+def get_name_and_description_eclassTrainST(text):
+    description, name = text.split("; Name:")
+    return description.replace("Description: ","").strip(), name.strip()
+
+def clean_eclassTrainST(x):
+    """This set isn't really about entailment/contradiction; it is really a dictionary"""
+    description, name = get_name_and_description_eclassTrainST(x['text'])
+    pos, _ = get_name_and_description_eclassTrainST(x['entailment'])
+    extra, _ = get_name_and_description_eclassTrainST(x['contradiction'])
+    x['query'] = 'What is a "%s"?' % name
+    x['positives'] = [pos]
+    x['negatives'] = []
+    # add the entailment as positive, contradiction as negatives
+    if x['label'] == 'entailment':
+        x['positives'].append(extra)
+    else:
+        x['negatives'] = [extra]
+    x['type'] = 'qa_triplet'
+    return x
+
+# do to: alzoubi36/policy_qa - policy questions
+def clean_policyqa(x):
+    """Adds more context to the questions about data security in the alzoubi36/policy_qa qa set """
+    idx_random_question_template = ord(x['context'].replace(' ','')[-5]) % len(POLICYQA_PREPEND)
+    question_template =POLICYQA_PREPEND[idx_random_question_template]
+    q = x['question']
+    q = q[0].lower() + q[1:]
+    x['query'] = question_template % q # ['id', 'title', 'context', 'question', 'answers']
+    x['positives'] = [x['context']]
+    #negatives_random, _ = negative_example_generator.find_negative(x['context'], k = 1, skip=10)
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_sc2qa(x):
+    x['query'] = x['question']
+    x['positives'] = [x['article']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_yahooanswers(x):
+    x['query'] = (x['question_title'] + " " + x['question_content']).strip() # 'question_title', 'question_content'
+    x['positives'] = [x['best_answer']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def filter_yahooanswers(x):
+    """Yahoo news filtering (filter for 6=business; 3=education; 9=govt)"""
+    return x['topic'] in [3,6,9] and len(x['question_title'])>10 and len(x['best_answer'])>10
+
+
+def clean_businessbookqa(x):
+    """17k business books cleaning"""
+    x['query'] = x['question']
+    x['positives'] = [x['answer']]
+    x['negatives'] = []
+    x['type'] = 'qa_triplet'
+    return x
+
+def clean_strixphilosophyqa(x):
+    """Cleans the sayhan/strix-philosophy-qa dataset for triplet-loss"""
+    return {
+        'query':x['question'],
+        'positives':[x['answer']],
+        'negatives':[],
+        'type':'qa_triplet'
+    }
+
+def clean_psychologyquestionanswer(x):
+    return {
+        'query':x['question'],
+        'positives':[x['answer']],
+        'negatives':[],
+        'type':'qa_triplet'
+    }
+
+
+def clean_investopediaqa(x):
+    return {
+        'query':x['prompts'],
+        'positives':[x['response']],
+        'negatives':[],
+        'type':'qa_triplet'
+    }
+
+
+def clean_legalsum(x):
+    max_char_len_billsum = int(CHAR_PER_WORD*MAX_SEQ_LENGTH)
+    text = x['article'][:max_char_len_billsum]
+    if 'SEC. 2.' in text:
+        text = ".".join(text.split('SEC. 2.')[1].split('.')[1:])
+    else:
+        if 'SHORT TITLE' in text:
+             text = text.split('SHORT TITLE')[1]
+    x['query'] = x['summary']
+    x['positives'] = [text.strip()]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_xsum(x):
+    x['query'] = x['summary']
+    x['negatives'] = []
+    x['positives'] = [x['document']]
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_eurlex(x):
+    x['query'] = x['text']
+    x['negatives'] = []
+    x['positives'] = []
+    x['type'] = 'sts_by_textlabel'
+    x['label'] = x['eurovoc_concepts']
+    x['subtype'] = 'eurlex'
+    return x
+
+
+def clean_allenai_citeprediction(x):
+    x['query'] = x['query']['abstract']
+    pos = x['pos']['abstract']
+    x['positives'] = [pos] if pos is not None else []
+    neg = x['neg']['abstract']
+    x['negatives'] = [neg] if neg is not None else []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_simple_wiki(x):
+    x['query'] = x['set'][0]
+    x['positives'] = [x['set'][1]]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_coco_captions_quintets(x):
+    x['query'] = x['set'][0]
+    x['positives'] = x['set'][1:]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_specter(x):
+    x['query'] = x['set'][0]
+    x['positives'] = [x['set'][1]]
+    x['negatives'] = [x['set'][2]]
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_paws(x):
+    x['query'] = x['sentence1']
+    x['positives'] = [x['sentence2']]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_qqp(x):
+    x['query'] = x['set']['query']
+    x['positives'] = x['set']['pos']
+    x['negatives'] = x['set']['neg']
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_ledgarlabelled(x):
+    x['query'] = x['provision']
+    x['negatives'] = []
+    x['positives'] = []
+    x['type'] = 'sts_by_textlabel'
+    x['subtype'] = 'ledgar'
+    return x
+
+
+def clean_debatesum(x):
+    x['query'] = x['Abstract']
+    x['positives'] = [x['Extract']]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def filter_chatgptparaphrases(x):
+    return x['category']=='sentence'
+
+
+def clean_chatgptparaphrases(x):
+    x['query'] = x['text']
+    x['positives'] = eval(x['paraphrases'])
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_gigaword(x):
+    x['query'] = x['summary']
+    x['positives'] = [x['document']]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
+    return x
+
+
+def clean_govreportsumm(x):
+    MAX_CHAR_LEN = int(CHAR_PER_WORD*MAX_SEQ_LENGTH/TOKEN_FUDGE_FACTOR)
+    text2 = x['report'][:MAX_CHAR_LEN]
+    text1 = x['summary'][:MAX_CHAR_LEN]
+    x['query'] = text1.strip()
+    x['positives'] = [text2.strip()]
+    x['negatives'] = []
+    x['type'] = 'sts_triplet'
     return x

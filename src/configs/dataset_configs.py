@@ -1,8 +1,7 @@
 from src.configs.constants import *
 from src.configs.dataset_cleaners import *
 
-
-# entries: url, subset, probability, size, option(name of postprocess subsetting), shuffle?
+# MLM TASK Datasets configs per huggingface data: each entry is a: url, subset, probability, size, option(name of postprocess subsetting), shuffle?
 MLM_FILES = [
     ('Pavithree/askHistorians',None, 0.6, 51300,'mlm',False, 0.8),
     ("Cohere/wikipedia-22-12", 'en', 42.0, 8590000, "mlm",(351, 100000), 0.16), # wikipedia has 351 files (each with 100000 examples)
@@ -53,6 +52,47 @@ MLM_FILES = [
 ] #
 
 
+# QA TASK Datasets configs per huggingface data: each entry is a: url, subset, probability, size, option(name of postprocess subsetting), shuffle?
+QA_FILES = [
+    ('embedding-data/PAQ_pairs',None, DEFAULT_PROB_QA, 7.29*10**6, 'qa_triplet', False), # wikipedia pop culture pairs # get from 'set', 7.29*10**6
+    ('gbharti/finance-alpaca',None, DEFAULT_PROB_QA, 6.89*10**5, 'qa_triplet', False), # Stanford's Alpaca (https://github.com/tatsu-lab/stanford_alpaca) and FiQA (https://sites.google.com/view/fiqa/) with another 1.3k pairs custom generated using GPT3.5
+    ('wiki_qa',None, DEFAULT_PROB_QA, 20.4*10**3, 'qa_triplet', False), # Wiki Question Answering corpus from Microsoft. with multiple negatives that are similar!
+    ('donfu/oa-stackexchange',None, DEFAULT_PROB_QA*2, 6330000, 'qa_triplet', (14, int(6330000//14))), # stack-exchange question-answer pairs, across lots of domains; notice the original is 6.6 million, but there is a filter
+    ('gart-labor/eclassTrainST', None, 0.02, 450912, 'qa_triplet', False), # questions about trade / business stuff
+    ('THUDM/webglm-qa', None, DEFAULT_PROB_QA, 43600, 'qa_triplet', False),
+    ('sciq',None, DEFAULT_PROB_QA, 11679, 'qa_triplet', False), # science questions from Allenai, with a question and support
+    ('LLukas22/lfqa_preprocessed', None, DEFAULT_PROB_QA*1.5, 226000,'qa_triplet',False),# REDDIT QUESTION ANSWERS (ASK historians, ask me like I'M FIVE)
+    ('npvinHnivqn/EnglishDictionary',None, DEFAULT_PROB_QA/4, 30864, 'qa_triplet',False), # 0.05 original size: 11200, post-file 30865
+    ('alzoubi36/policy_qa', None, DEFAULT_PROB_QA/4, 17100,  'qa_triplet',False),
+    ('sc2qa/sc2q_commoncrawl',None, DEFAULT_PROB_QA, 44500, 'qa_triplet', False),
+    ('yahoo_answers_topics', None, DEFAULT_PROB_QA, 401357,'qa_triplet', False),
+    ('launch/gov_report_qs','paragraph', DEFAULT_PROB_QA/5, 4878, 'qa_triplet', False),
+    ('theoldmandthesea/17k_business_book', None, DEFAULT_PROB_QA/4, 17480, 'qa_triplet', False),
+    ('sayhan/strix-philosophy-qa', None, DEFAULT_PROB_QA/2, 133799, 'qa_triplet',False), # philosophy questions
+    ('BoltMonkey/psychology-question-answer',None, DEFAULT_PROB_QA/2, 197000, 'qa_triplet', False), # psychology questions
+    ("sharsh02/Investopedia-Insights", None, DEFAULT_PROB_QA/2, 10558, 'qa_triplet', False)
+]
+
+
+STS_FILES = [
+    # dataset name, subset, take_probability, dataset size
+    ('xsum', None, DEFAULT_PROB_QA, 204000, 'sts_by_triplet', False),
+    ('embedding-data/simple-wiki',None, DEFAULT_PROB_QA, 102000, 'sts_by_triplet', False), # wikipedia paraphrases
+    ('embedding-data/coco_captions_quintets',None, DEFAULT_PROB_QA/2,82800, 'sts_by_triplet', False), # caption paraphrases
+    ('embedding-data/SPECTER',None, DEFAULT_PROB_QA/2,684000, 'sts_by_triplet', False), # ?
+    ('paws','labeled_final',DEFAULT_PROB_QA, 49400, 'sts_by_triplet', False), #
+    ('embedding-data/QQP_triplets',None,DEFAULT_PROB_QA, 102000, 'sts_by_triplet', False), # quora?
+    #("allenai/scirepeval", 'cite_prediction_new', DEFAULT_PROB_QA/2, 1300000, 'sts_by_triplet', False), # ? this takes a long time...maybe use smaller verion
+    ("allenai/scirepeval", 'cite_prediction_aug2023refresh', DEFAULT_PROB_QA/2, 480000, 'sts_by_triplet', False), # ? this takes a long time...maybe use smaller verion
+    ("lighteval/legal_summarization","BillSum", DEFAULT_PROB_QA, 18900, 'sts_by_triplet', False),
+    ('https://drive.switch.ch/index.php/s/j9S0GRMAbGZKa1A/download?path=%2F&files=LEDGAR_2016-2019.jsonl.zip', None, DEFAULT_PROB_QA, 1000000, 'sts_by_label', False),
+    ('eurlex', None, DEFAULT_PROB_QA, 45000, 'sts_by_label', False),
+    ('humarin/chatgpt-paraphrases',None, DEFAULT_PROB_QA, 172059, 'sts_by_triplet', False),
+    ('gigaword', None, DEFAULT_PROB_QA*1.5, 2000000, 'sts_by_triplet',False),
+    ('pszemraj/govreport-summarization-8192',None, DEFAULT_PROB_QA/4, 10019, 'sts_by_triplet',False),
+]
+
+
 data_streaming_config_mlm = {
     'files':MLM_FILES,
     'val_size':VAL_CORPUS_SIZE, #2000,
@@ -66,6 +106,27 @@ data_streaming_config_mlm = {
     "path_cache_mlm_train":PATH_CACHE_MLM_TRAIN,
 }
 
+
+data_streaming_config_qa = {
+    'files':QA_FILES,
+    'max_seq_length':MAX_SEQ_LENGTH,
+    'val_size':VAL_CORPUS_SIZE,
+    'train_chunk_size':TRAINING_CORPUS_SIZE_PER_EPOCH,
+    'seed':SEED,
+    "path_cache_qa_val":PATH_CACHE_QA_VAL,
+    "path_cache_qa_train":PATH_CACHE_QA_TRAIN,
+}
+
+
+data_streaming_config_sts = {
+    'files':STS_FILES,
+    'max_seq_length':MAX_SEQ_LENGTH
+    'val_size':VAL_CORPUS_SIZE,
+    'train_chunk_size':TRAINING_CORPUS_SIZE_PER_EPOCH,
+    'seed':SEED,
+    "path_cache_sts_val":PATH_CACHE_STS_VAL,
+    "path_cache_sts_train":PATH_CACHE_STS_TRAIN,
+}
 
 
 # configuration for the streaming mlm set
@@ -84,7 +145,7 @@ example_processor_config = {
     'min_seq_length':MIN_SEQ_LENGTH,
     'max_chunk_size':MAX_CHUNK_SIZE,
     'min_sentence_len':20,
-    'seed':SEED
+    'seed':SEED,
 }
 
 
@@ -100,7 +161,6 @@ negative_config = {
     "corpus" : None,
     "save_cache":'/tmp/negative_corpus_cache.pkl'
 }
-
 
 
 # cleaning function for the MLM task
@@ -162,4 +222,46 @@ mlm_streaming_cleaning_functions = {
     ]),
     "nvidia/ChatQA-Training-Data/synethetic_convqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers']),
     "nvidia/ChatQA-Training-Data/tatqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers'])
+}
+
+
+# cleaning functions for the QA task
+qa_streaming_cleaning_functions = {
+    'embedding-data/PAQ_pairs':(clean_stream_PAQ_pairs, None, ['query','positives','negatives'],['set']),
+    'gbharti/finance-alpaca':(clean_stream_finance_alpaca,None, ['query','positives','negatives'],['input', 'output', 'text', 'instruction']),
+    'wiki_qa':(clean_stream_wiki_qa, None, ['query','positives','negatives'],['question_id', 'question', 'document_title', 'answer', 'label']),
+    'donfu/oa-stackexchange':(clean_stream_oa_stackexchange, filter_os_stackexchange, ['query','positives','negatives'], ['INSTRUCTION', 'RESPONSE', 'SOURCE', 'METADATA']),
+    'gart-labor/eclassTrainST':(clean_eclassTrainST, None, ['query','positives','negatives'], ['text', 'entailment', 'contradiction', 'label']),
+    'THUDM/webglm-qa':( clean_webglmqa, None, ['query','positives','negatives'], ['question','answer','references']),
+    'sciqa': (clean_stream_sciqa, None, ['query','positives','negatives'], ['question', 'distractor3', 'distractor1', 'distractor2', 'correct_answer', 'support']),
+    'LLukas22/lfqa_preprocessed':(clean_lfqa, None, ['query','positives','negatives'], ['question','answer','context']), #REDDIT QUESTION ANSWERS (ASK historians, ask me like I'M FIVE)
+    'npvinHnivqn/EnglishDictionary':(clean_dictionary, filter_dictionary, ['query','positives','negatives'], ['word','definition']), # dictionaries
+    'alzoubi36/policy_qa':(clean_policyqa, None, ['query','positives','negatives'],  ['id', 'title', 'context', 'question', 'answers'] ), # PRIVACYGLUE
+    'sc2qa/sc2q_commoncrawl':(clean_sc2qa, None, ['query','positives','negatives'], ['question','article','url']),
+    'yahoo_answers_topics':(clean_yahooanswers, filter_yahooanswers, ['query','positives','negatives'], ['id', 'topic', 'question_title', 'question_content', 'best_answer']),
+    'launch/gov_report_qs':(clean_govreportqa, None, ['query','positives','negatives'],['doc_id', 'summary_paragraph_index', 'document_sections', 'question_summary_pairs']),
+    'theoldmandthesea/17k_business_book':(clean_businessbookqa, None, ['query','positives','negatives'], ['question','answer','book']),
+    'sayhan/strix-philosophy-qa':(clean_strixphilosophyqa, None, ['query','positives','negatives'], ['category','question','answer']),
+    "BoltMonkey/psychology-question-answer":(clean_psychologyquestionanswer,None, ['query','positives','negatives'], ['question','answer']),
+    "sharsh02/Investopedia-Insights":(clean_investopediaqa, None, ['query','positives','negatives'], ['prompts','response'])
+}
+
+
+# cleaning functions for the STS/retrieval task
+sts_streaming_cleaning_functions = {
+    'xsum':(clean_xsum, None, ['query','positives','negatives'],['summary','id','document']),
+    'embedding-data/simple-wiki':(clean_simple_wiki, None, ['query','positives','negatives'],['set']),
+    'embedding-data/coco_captions_quintets':(clean_coco_captions_quintets,None, ['query','positives','negatives'],['set']),
+    'embedding-data/SPECTER':(clean_specter,None, ['query','positives','negatives'],['set']),
+    'paws':(clean_paws,None, ['query','positives','negatives'],['id', 'sentence1', 'sentence2', 'label']), # NOTE: these are adversarial paraphrases -- the negatives should be ignored
+    'embedding-data/QQP_triplets':(clean_qqp,None, ['query','positives','negatives'],['set']),
+    "allenai/scirepeval":(clean_allenai_citeprediction, None,  ['query','positives','negatives'], ['pos','neg']),
+    "lighteval/legal_summarization":(clean_legalsum, None, ['query','positives','negatives'], ['article', 'summary']),
+    "https://drive.switch.ch/index.php/s/j9S0GRMAbGZKa1A/download?path=%2F&files=LEDGAR_2016-2019.jsonl.zip":(
+        clean_ledgarlabelled, None, ['query','label'], ['provision','source']
+    ),
+    "eurlex":(clean_eurlex, None,  ['query','positives','negatives'], ['celex_id', 'title', 'text', 'eurovoc_concepts']),
+    'humarin/chatgpt-paraphrases':(clean_chatgptparaphrases, filter_chatgptparaphrases, ['query','positives','negatives'], ['text','paraphrases','category','source']),
+    'gigaword':(clean_gigaword, None, ['query','positives','negatives'], ['document','summary']),
+    'pszemraj/govreport-summarization-8192':(clean_govreportsumm, None, ['query','positives','negatives'],['report', 'summary', 'input_token_len', 'summary_token_len'])
 }
