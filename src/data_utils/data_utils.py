@@ -1,13 +1,7 @@
 from langdetect import detect
 import re
 from typing import Tuple, Union, Dict, List, Any
-
-def check_is_code(text:str)->float:
-    """Estimates a ratio of special char (that may indicate math/code notation); less than 10% is code for normal text."""
-    nchar = min(5000,len(text))
-    nchar_after_removespecialchar = len(re.sub(r"[\<\>\_\@\^\=\+\*\$\{\[\]\}\(\)\/\\\.]",'',text[:5000]))
-    ratio_specialchar = 1-nchar_after_removespecialchar/nchar
-    return ratio_specialchar
+from src.configs.dataset_cleaners import check_is_code
 
 
 def check_language(text:str, special_char_threshold:float=0.10)->Tuple[bool, float]:
