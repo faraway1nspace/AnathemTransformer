@@ -10,8 +10,11 @@ VAL_CORPUS_SIZE = 500
 CACHE_DIR = "/tmp" # where caches will be saved
 PATH_CACHE_MLM_VAL = f"{CACHE_DIR}/cache_val_mlm.pkl"
 PATH_CACHE_MLM_TRAIN = f"{CACHE_DIR}/cache_train_mlm_%03g.pkl"
-PATH_CACHE_QA_VAL = f"{CACHE_DIR}/cache_qa_qa.pkl"
+PATH_CACHE_QA_VAL = f"{CACHE_DIR}/cache_val_qa.pkl"
 PATH_CACHE_QA_TRAIN = f"{CACHE_DIR}/cache_train_qa_%03g.pkl"
+PATH_CACHE_STS_VAL = f"{CACHE_DIR}/cache_val_sts.pkl"
+PATH_CACHE_STS_TRAIN = f"{CACHE_DIR}/cache_train_sts_%03g.pkl"
+
 
 DIR_LOG = "/tmp/"
 DEFAULT_PROB_QA = 0.1

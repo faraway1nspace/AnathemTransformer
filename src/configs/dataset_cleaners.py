@@ -736,7 +736,7 @@ def clean_ledgarlabelled(x):
     return x
 
 
-def clean_debatesum(x):
+def clean_debatesum_sts(x):
     x['query'] = x['Abstract']
     x['positives'] = [x['Extract']]
     x['negatives'] = []
@@ -765,11 +765,185 @@ def clean_gigaword(x):
 
 
 def clean_govreportsumm(x):
-    MAX_CHAR_LEN = int(CHAR_PER_WORD*MAX_SEQ_LENGTH/TOKEN_FUDGE_FACTOR)
-    text2 = x['report'][:MAX_CHAR_LEN]
-    text1 = x['summary'][:MAX_CHAR_LEN]
+    MAX_TOKEN_CHAR_LEN = int(CHAR_PER_WORD*MAX_SEQ_LENGTH/TOKEN_FUDGE_FACTOR)
+    text2 = x['report'][:MAX_TOKEN_CHAR_LEN]
+    text1 = x['summary'][:MAX_TOKEN_CHAR_LEN]
     x['query'] = text1.strip()
     x['positives'] = [text2.strip()]
     x['negatives'] = []
     x['type'] = 'sts_triplet'
     return x
+
+
+def clean_snli(x):
+    x['pair1'] = x['premise']
+    x['pair2'] = x['hypothesis']
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'snli'
+    x['n_labels'] = 3
+    return x
+
+
+def clean_contractnli(x):
+    x['pair1'] = x['premise']
+    x['pair2'] = x['hypothesis']
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'contractnli'
+    x['n_labels'] = 3
+    return x
+
+
+def clean_mnli(x):
+    x['pair1'] = x['premise']
+    x['pair2'] = x['hypothesis']
+    #x['label'] = []
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'mnli'
+    x['n_labels'] = 3
+    return x
+
+
+def clean_cannotdatast(x):
+    x['pair1'] = x['premise']
+    x['pair2'] = x['hypothesis']
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'cannotdataset'
+    x['n_labels'] = 2
+    return x
+
+
+def clean_newscategory(x):
+    x['pair1'] = x['headline'] + ". " + x['short_description']
+    x['pair2'] = None
+    x['label'] = NEWSCATEGORIES.get(x['category'],NEWSCATEGORIES['OTHER'])
+    x['type'] = 'classification'
+    x['cls_id'] = 'newscategory'
+    x['n_labels'] = 40
+    return x
+
+def clean_doceeevents(x):
+    x['pair1'] = x['text']
+    x['pair2'] = None
+    x['label'] = DOCEEEVENTS.get(x['event_type'],DOCEEEVENTS['other'])
+    x['type'] = 'classification'
+    x['cls_id'] = 'doceeevents'
+    x['n_labels'] = 61
+    return x
+
+
+def clean_dbpedia_l2(x):
+    x['pair1'] = x['text']
+    x['pair2'] = None
+    x['label'] = DBPEDIA_L2.get(x['l2'],DBPEDIA_L2['other'])
+    x['type'] = 'classification'
+    x['cls_id'] = 'dbpedia_l2'
+    x['n_labels'] = 71 # 219
+    return x
+
+
+def clean_dbpedia_l3(x):
+    x['pair1'] = x['text']
+    x['pair2'] = None
+    x['label'] = DBPEDIA_L3.get(x['l3'],DBPEDIA_L3['other'])
+    x['type'] = 'classification'
+    x['cls_id'] = 'dbpedia_l3'
+    x['n_labels'] = 220
+    return x
+
+
+def clean_casehold_positives(x):
+    x['pair1'] = x['citing_prompt'].split('(<HOLDING>)')[0]
+    correct_holding_id = int(x['label'])
+    correct_holding_text = x['holding_%d' % correct_holding_id]
+    x['pair2'] = correct_holding_text
+    x['label'] = 1
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'casehold'
+    x['n_labels'] = 2
+    return x
+
+
+def clean_casehold_negatives(x):
+    x['pair1'] = x['citing_prompt'].split('(<HOLDING>)')[0]
+    correct_holding_id = int(x['label'])
+    incorrect_holding_id = (correct_holding_id+1) % 4
+    incorrect_holding_text = x['holding_%d' % incorrect_holding_id]
+    x['pair2'] = incorrect_holding_text
+    x['label'] = 0
+    x['type'] = 'pair_classification'
+    x['cls_id'] = 'casehold'
+    x['n_labels'] = 2
+    return x
+
+
+def filter_snli(x):
+    return x['label']!=-1
+
+
+def filter_newscategory(x):
+    return x['category'] not in ['LATINO VOICES',"QUEER VOICES", "BLACK VOICES"]
+
+
+def clean_mtopintent(x):
+    # id (int64)	text (string)	label (int32)	label_text (string)
+    x['pair1'] = x['text']
+    x['pair2'] = None
+    x['type'] = 'classification'
+    x['cls_id'] = 'mtopintent'
+    x['n_labels'] = 113
+    return x
+
+
+def clean_syntheticpiifinance(x):
+    """We'll use the expanded type as 1600 labels for these contracts"""
+    x['pair1'] = x['generated_text'].replace('**'," ")
+    x['pair2'] = None
+    x['label'] = (x['document_type']+"_"+x['expanded_type']).lower().replace(" ","-")
+    x['type'] = 'classification'
+    x['cls_id'] = 'syntheticpiifinance'
+    x['n_labels'] = 1679
+    return x
+
+def filter_syntheticpiifinance(x):
+    """Filter to only english-language examples in ppi-finace dataset."""
+    if x['language'].lower()!='english':
+        return False
+    label2 = x['document_type']+"|"+x['expanded_type']
+    return label2 not in [
+        'XBRL|Financial Statement Footnotes',
+        'XBRL|Taxonomy Extension',
+        'XBRL|Financial Statement',
+        'XBRL|Compliance Data Validation',
+        'FpML|Index Amortizing Swap',
+        'XBRL|Credit Rating Analysis',
+        'XBRL|Merger & Acquisition Analysis',
+        'FpML|Credit Spread Swaps',
+        'Financial Data Feed|Fixed Income Data',
+        'FpML|Basis Swap', 'FpML|Inflation Swaps',
+        'XBRL|Regulatory Filing', 'XBRL|Audit Report', 'XBRL|Risk Assessment',
+        'Financial Data Feed|Financial Index Data', 'Financial Data Feed|Market Volatility',
+        'XBRL|Presentation Linkbase Design', 'FIX Protocol|Risk Management',
+        'XBRL|Industry-Specific Metrics', 'FIX Protocol|QuoteRequest', 'XBRL|Tax Filing', 'FpML|Asian Option',
+        'Financial Data Feed|Regulatory Reporting',
+        'Financial Data Feed|Interest Rate Swaps', 'XBRL|Financial Forecast', 'FpML|Commodity Swap', 'FpML|Forward Rate Agreement',
+        'XBRL|Metadata Annotation Framework', 'XBRL|Comparative Financial Analysis', 'XBRL|Risk and Compliance Data Integration', 'FpML|Binary Option',
+        'XBRL|Nonprofit Organization Financials', 'FpML|Mortgage-Backed Security Swaps', 'XBRL|Sustainability Reporting Metrics', 'FpML|FX Derivative',
+        'XBRL|Business Rules Validation', 'XBRL|Label Linkbase Generation', 'XBRL|XBRL Instance Document Creation', 'FpML|Range Accrual Swap',
+        'XBRL|Quarterly Earnings', 'FpML|Cross Currency Swap', 'FpML|Equity Swap', 'FpML|Convertible Bond Swaps',
+        'FpML|Interest Rate Cap', 'FpML|Foreign Exchange Swaps', 'FpML|Constant Maturity Swap', 'XBRL|Quarterly Financial Statement', 'Financial Statement|XBRL',
+        'XBRL|Extension Taxonomy Development', 'XBRL|Financial Statement Mapping', 'XBRL|Data Transformation Automation', 'FpML|Basket Option',
+        'EDI|XML', 'XBRL|International Financial Reporting Standards (IFRS)', 'XBRL|Custom XBRL Schema', 'Financial Data Feed|Currency Exchange', 'FpML|Variance Swap',
+        'FpML|Barrier Option', 'FpML|Basket Swaps', 'FpML|Interest Rate Swap', 'XBRL|Financial Ratio Analysis', 'XBRL|Calculation Linkbase Creation', 'XBRL|Regulatory Compliance Mapping',
+        'FpML|Commodity Swaps', 'FpML|Credit Spread Option', 'EDI|X12', 'FIX Protocol|Quote', 'XBRL|Audit Trail Generation', 'XBRL|Business Valuation',
+        'XBRL|Small Business Financial Statements', 'XBRL|Data Quality Assessment Framework',
+        'XBRL|Investor Presentation',
+        'XBRL|Validation Rule Set Definition', 'FpML|Credit Default Swap', 'FpML|Interest Rate Floor', 'XBRL|Financial Data Aggregation',
+        'XBRL|Entity-specific Disclosure Creation', 'XBRL|Industry Benchmarking', 'XBRL|Cross-domain Mapping Strategy', 'XBRL|Investor Relations Reporting',
+        'XBRL|Financial Compliance Review', 'FpML|Inflation-Linked Swaps', 'XBRL|Instance Document Generation', 'Financial Data Feed|Exchange Traded Funds',
+        'FpML|Digital Option', 'XBRL|Inline XBRL Implementation', 'FpML|Energy Swaps', 'XBRL|XBRL Rendering and Visualization', 'FpML|Equity Swaps', 'CSV|XML',
+        'Financial Data Feed|Risk Management', 'XBRL|Data Integration Framework', 'XBRL|Sustainability Report', 'FpML|Yield Curve Swaps',
+        'FpML|Inflation Swap', 'Financial Data Feed|Futures Market Data',
+        'XBRL|Consolidated Financial Reports',
+        'FpML|Credit Default Swaps', 'XBRL|Taxonomy Extension Development', 'FpML|Volatility Swaps', 'XBRL|Corporate Governance', 'XBRL|Government Regulatory Filing',
+        'XBRL|Reference Linkbase Construction'
+    ]

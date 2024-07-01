@@ -410,9 +410,9 @@ def make_report_about_mlm_datasets(mlm_task_dataset:dict, dir_out:str=DIR_LOG)->
     out_path = os.path.join(dir_out, f'log_source_mlm_epoch-{epoch}.json')
     sums = {}
     for setnm,setcnt in mlm_task_dataset['log_source'].items():
-    for dnm, dcnt in setcnt.items():
-        if dnm not in sums: sums[dnm]=0
-        sums[dnm]+=dcnt
+        for dnm, dcnt in setcnt.items():
+            if dnm not in sums: sums[dnm]=0
+            sums[dnm]+=dcnt
     
     # proportion of data dedicated to each dataset
     out = {
@@ -779,20 +779,24 @@ negative_example_generator= NegativeExampleGenerator()
 
 # initialize the MLM streaming sets
 # EPOCH 1
-datasets_static_mlm = initialize_and_get_mlm_streaming_datasets(
-    data_streaming_config = data_streaming_config_mlm,
-    streaming_cleaning_functions = mlm_streaming_cleaning_functions, 
-    start_proportion = None,
-    epoch=0,
-    seed=SEED,
-    path_to_val_cache = data_streaming_config_mlm['path_cache_mlm_val'],
-    path_to_train_cache_epoch = data_streaming_config_mlm['path_cache_mlm_train'],
-    do_check_english=True,
-)
+if True:
+    datasets_static_mlm = initialize_and_get_mlm_streaming_datasets(
+        data_streaming_config = data_streaming_config_mlm,
+        streaming_cleaning_functions = mlm_streaming_cleaning_functions, 
+        start_proportion = None,
+        epoch=0,
+        seed=SEED,
+        path_to_val_cache = data_streaming_config_mlm['path_cache_mlm_val'],
+        path_to_train_cache_epoch = data_streaming_config_mlm['path_cache_mlm_train'],
+        do_check_english=True,
+    )
 
-# log the creation
-make_report_about_mlm_datasets(datasets_static_mlm, dir_out=DIR_LOG)
-print('DONE MLM PREPROCESSING')
+    # log the creation
+    try:
+        make_report_about_mlm_datasets(datasets_static_mlm, dir_out=DIR_LOG)
+    except:
+        print('make_report_about_mlm_datasets failed')
+    print('DONE MLM PREPROCESSING')
 
 
 # initiate the QA streaming sets

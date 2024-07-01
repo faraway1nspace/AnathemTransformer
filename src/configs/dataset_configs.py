@@ -3,6 +3,16 @@ from src.configs.dataset_cleaners import *
 
 # MLM TASK Datasets configs per huggingface data: each entry is a: url, subset, probability, size, option(name of postprocess subsetting), shuffle?
 MLM_FILES = [
+    ('Hellisotherpeople/DebateSum', None, 1.5, 24647, 'mlm',False, 0.9),
+    ('lukesjordan/worldbank-project-documents', None, 0.45, 15700, 'mlm', False, 0.08),
+    ('64bits/lex_fridman_podcast_for_llm_vicuna',None, 0.7, 17200,'mlm',False,0.5),
+    ('nid989/EssayFroum-Dataset',None, 0.88, 25600,'mlm',False,0.5),
+    ('nlpaueb/finer-139',None, 1.2, 179195, 'mlm',False, 0.8),
+    ('squad',None, 2.0/2, 87600, 'mlm', False, 0.2),
+    ("Isotonic/human_assistant_conversation",None,1.4, 58700, 'mlm',(3, 195590),0.09),
+    ("hugfaceguy0001/stanford_plato",None, 0.33, 1776,'mlm', False, 0.4),
+    ("nvidia/ChatQA-Training-Data", "synthetic_convqa", 2*2/3, 40000,'mlm',False,0.1), # same source
+    ("nvidia/ChatQA-Training-Data", "tatqa", 2*1/3, 11500,'mlm',False,0.3), # # same source
     ('Pavithree/askHistorians',None, 0.6, 51300,'mlm',False, 0.8),
     ("Cohere/wikipedia-22-12", 'en', 42.0, 8590000, "mlm",(351, 100000), 0.16), # wikipedia has 351 files (each with 100000 examples)
     ('wikimedia/wikipedia','20231101.en', 7.0, 41*156288,"mlm",(41,156288),0.1), # wikipedia long docs
@@ -39,16 +49,6 @@ MLM_FILES = [
     ('Skelebor/book_titles_and_descriptions', None, 2.24, 1000000,'mlm', (2, 1000000//2), 0.2),
     ('joelito/legal_case_document_summarization',None, 2.2, 7700, 'mlm', False, 0.2),
     ('joelito/legal-mc4','en', 1.1, 180000, 'mlm', False, 0.1),
-    ('Hellisotherpeople/DebateSum', None, 1.58, 24647, 'mlm',False, 0.9),
-    ('lukesjordan/worldbank-project-documents', None, 0.45, 15700, 'mlm', False, 0.08),
-    ('64bits/lex_fridman_podcast_for_llm_vicuna',None, 0.7, 17200,'mlm',False,0.5),
-    ('nid989/EssayFroum-Dataset',None, 0.88, 25600,'mlm',False,0.5),
-    ('nlpaueb/finer-139',None, 1.2, 179195, 'mlm',False, 0.8),
-    ('squad',None, 2.0/2, 87600, 'mlm', False, 0.2),
-    ("Isotonic/human_assistant_conversation",None,1.4, 58700, 'mlm',(3, 195590),0.09),
-    ("hugfaceguy0001/stanford_plato",None, 0.33, 1776,'mlm', False, 0.4),
-    ("nvidia/ChatQA-Training-Data", "synthetic_convqa", 2*2/3, 40000,'mlm',False,0.1), # same source
-    ("nvidia/ChatQA-Training-Data", "tatqa", 2*1/3, 11500,'mlm',False,0.3), # # same source
 ] #
 
 
@@ -93,6 +93,25 @@ STS_FILES = [
 ]
 
 
+# repos/datasets for the pair-classification task
+CLS_FILES = [
+    # dataset name, subset, take_probability, dataset size
+    ('snli', None, DEFAULT_PROB_QA/2, 550000, 'pair_classification', False),
+    ('multi_nli', None, DEFAULT_PROB_QA, 393000, 'pair_classification', False),
+    ('tum-nlp/cannot-dataset', None, DEFAULT_PROB_QA, 77400, 'pair_classification', False),
+    ('kiddothe2b/contract-nli','contractnli_a', DEFAULT_PROB_QA//3, 6200, 'pair_classification', False),
+    ('kiddothe2b/contract-nli','contractnli_b', DEFAULT_PROB_QA//3, 7190, 'pair_classification', False),
+    ('heegyu/news-category-dataset', None, DEFAULT_PROB_QA/2, 210000, 'classification', False),
+    ('fkdosilovic/docee-event-classification', None, DEFAULT_PROB_QA/2, 21949, 'classification', False),
+    ('DeveloperOats/DBPedia_Classes', None, DEFAULT_PROB_QA/2, 241000, 'classification', False),
+    ('DeveloperOats/DBPedia_Classes', None, DEFAULT_PROB_QA/2, 241000,'classification', False),
+    ('casehold/casehold', 'all', DEFAULT_PROB_QA/2, 53100, 'pair_classification', False), #
+    ('casehold/casehold', 'all', DEFAULT_PROB_QA/2, 53100, 'pair_classification', False), #
+    ('mteb/mtop_intent', 'en',DEFAULT_PROB_QA, 15700, 'classification',False),
+    ('gretelai/synthetic_pii_finance_multilingual',None, DEFAULT_PROB_QA, 24506, 'classification', False)
+]
+
+
 data_streaming_config_mlm = {
     'files':MLM_FILES,
     'val_size':VAL_CORPUS_SIZE, #2000,
@@ -120,7 +139,7 @@ data_streaming_config_qa = {
 
 data_streaming_config_sts = {
     'files':STS_FILES,
-    'max_seq_length':MAX_SEQ_LENGTH
+    'max_seq_length':MAX_SEQ_LENGTH,
     'val_size':VAL_CORPUS_SIZE,
     'train_chunk_size':TRAINING_CORPUS_SIZE_PER_EPOCH,
     'seed':SEED,
@@ -165,6 +184,20 @@ negative_config = {
 
 # cleaning function for the MLM task
 mlm_streaming_cleaning_functions = {
+    'Hellisotherpeople/DebateSum':(clean_debatesum, filter_debatesum,[
+        '#CharsAbstract', '#CharsDocument', '#CharsExtract', '#WordsAbstract', '#WordsDocument', '#WordsExtract', 'AbsCompressionRatio', 'Abstract', 'Citation', 'DebateCamp', 'ExtCompressionRatio', 'Extract', 'Tag', 'Unnamed: 0', 'Year', 'Full-Document','OriginalDebateFileName'
+    ]),
+    'lukesjordan/worldbank-project-documents':(clean_worldbank, None, ['project_id','document_text','document_type']),
+    '64bits/lex_fridman_podcast_for_llm_vicuna':(clean_lexfridmanchat, None, ['conversations','id']),
+    'nid989/EssayFroum-Dataset':(clean_essayforum, None, ['Cleaned Essay','Correct Grammar']),
+    "nlpaueb/finer-139":(clean_finer139_for_mlm, filter_finer139, ['ner_tags','tokens','id']),
+    'squad':(clean_squad, None, ['context','question','answers','title','id']),
+    "Isotonic/human_assistant_conversation":(clean_isotonicconversations, None, ["prompt","response"]),
+    "hugfaceguy0001/stanford_plato":(clean_stanfordplato, None, [
+        'shorturl', 'title', 'pubinfo', 'preamble', 'toc', 'main_text', 'bibliography', 'related_entries'
+    ]),
+    "nvidia/ChatQA-Training-Data/synethetic_convqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers']),
+    "nvidia/ChatQA-Training-Data/tatqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers']),
     'Pavithree/askHistorians':(clean_askhistorians, filter_askhistorians, ['q_id','title','selftext','document','subreddit','url','answers']),
     "Cohere/wikipedia-22-12":(lambda x : x, None, ['id', 'title', 'url', 'wiki_id', 'views', 'paragraph_id', 'langs']),
     'wikimedia/wikipedia':(lambda x: x, None, ['id', 'url', 'title']),
@@ -207,21 +240,6 @@ mlm_streaming_cleaning_functions = {
     'Skelebor/book_titles_and_descriptions':(lambda x : {'text': x['description']},lambda x : len(str(x['description']))>80, []),
     'joelito/legal_case_document_summarization':(lambda x: {'text':x['summary']}, None, []),
     'joelito/legal-mc4/en':(lambda x:x, None, ['url','timestamp','matches']),
-    'Hellisotherpeople/DebateSum':(clean_debatesum, filter_debatesum,[
-        '#CharsAbstract', '#CharsDocument', '#CharsExtract', '#WordsAbstract', '#WordsDocument', '#WordsExtract', 'AbsCompressionRatio', 'Abstract', 'Citation',
-        'DebateCamp', 'ExtCompressionRatio', 'Extract', 'Tag', 'Unnamed: 0', 'Year', 'Full-Document','OriginalDebateFileName'
-    ]),
-    'lukesjordan/worldbank-project-documents':(clean_worldbank, None, ['project_id','document_text','document_type']),
-    '64bits/lex_fridman_podcast_for_llm_vicuna':(clean_lexfridmanchat, None, ['conversations','id']),
-    'nid989/EssayFroum-Dataset':(clean_essayforum, None, ['Cleaned Essay','Correct Grammar']),
-    "nlpaueb/finer-139":(clean_finer139_for_mlm, filter_finer139, ['ner_tags','tokens','id']),
-    'squad':(clean_squad, None, ['context','question','answers','title','id']),
-    "Isotonic/human_assistant_conversation":(clean_isotonicconversations, None, ["prompt","response"]),
-    "hugfaceguy0001/stanford_plato":(clean_stanfordplato, None, [
-        'shorturl', 'title', 'pubinfo', 'preamble', 'toc', 'main_text', 'bibliography', 'related_entries'
-    ]),
-    "nvidia/ChatQA-Training-Data/synethetic_convqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers']),
-    "nvidia/ChatQA-Training-Data/tatqa":(clean_nvidiaqa, None, ['document', 'messages', 'answers'])
 }
 
 
