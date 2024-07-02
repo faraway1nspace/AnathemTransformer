@@ -1,6 +1,7 @@
 import re
 from math import prod
 from typing import Tuple, Union, Dict, List, Any
+from src.configs.constants import *
 from src.configs.dataset_templates import *
 
 
@@ -457,7 +458,6 @@ def clean_player1book3(x):
     x.update({'text':text})
     return x
 
-
 def clean_govreportqa(x):
     """Clean govreport for QA task."""
     q_raw = x['question_summary_pairs']['question']
@@ -470,10 +470,13 @@ def clean_govreportqa(x):
         q_concat = ', '.join(q_proc[:-1]) + ', and ' + q_proc[-1] + '?'
         a_concat = ' '.join(a_raw)
     else:
-        q_raw = q_raw[:2] + [random.choice(q_raw[2:])]
-        q_proc = [q[0].lower() + q[1:].strip('?') for q in q_raw]
+        a_concat = ' '.join(a_raw) # answer will include ALL of summaries
+        # randomly select a third question
+        q_random = q_raw[2:][random_by_char(a_concat,3,10) % (len(q_raw)-2)]
+        # combine first 2 questions and the random one as a list
+        q_selected = q_raw[:2] + [q_random]
+        q_proc = [q[0].lower() + q[1:].strip('?') for q in q_selected]
         q_concat = ', '.join(q_proc[:-1]) + ', and ' + q_proc[-1] + '?'
-        a_concat = ' '.join(a_raw)
     x['query']=q_concat
     x['positives']=[a_concat]
     x['negatives']=[]
@@ -490,7 +493,7 @@ def filter_dictionary(x):
 
 def clean_dictionary(x):
     """Converts a dictionary term into a question, sampling randomly from 20 template questions."""
-    idx_random_question_template = ord(x['definition'].replace(' ','')[-6]) % len(list_of_dictionary_paraphrases)
+    idx_random_question_template = ord(x['definition'].replace(' ','')[-6]) % len(LIST_OF_DICTIONARY_PARAPHRASES)
     question_template =LIST_OF_DICTIONARY_PARAPHRASES[idx_random_question_template]
     x['query'] = question_template % x['word']
     x['positives'] = [x['definition']]
@@ -947,3 +950,4 @@ def filter_syntheticpiifinance(x):
         'FpML|Credit Default Swaps', 'XBRL|Taxonomy Extension Development', 'FpML|Volatility Swaps', 'XBRL|Corporate Governance', 'XBRL|Government Regulatory Filing',
         'XBRL|Reference Linkbase Construction'
     ]
+

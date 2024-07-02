@@ -112,6 +112,7 @@ CLS_FILES = [
 ]
 
 
+# configuration for the MLS streaming data
 data_streaming_config_mlm = {
     'files':MLM_FILES,
     'val_size':VAL_CORPUS_SIZE, #2000,
@@ -126,6 +127,7 @@ data_streaming_config_mlm = {
 }
 
 
+# configuration for the QA task streaming data
 data_streaming_config_qa = {
     'files':QA_FILES,
     'max_seq_length':MAX_SEQ_LENGTH,
@@ -149,12 +151,14 @@ data_streaming_config_sts = {
 
 
 # configuration for the streaming mlm set
-clsdata_streaming_config = {
-    'files':'cls_files',
+data_streaming_config_cls = {
+    'files':CLS_FILES,
     'max_seq_length':MAX_SEQ_LENGTH,
-    'val_size':500,
+    'val_size':VAL_CORPUS_SIZE,
     'train_chunk_size':TRAINING_CORPUS_SIZE_PER_EPOCH,
     'seed':SEED,
+    "path_cache_cls_val":PATH_CACHE_CLS_VAL,
+    "path_cache_cls_train":PATH_CACHE_CLS_TRAIN,
 }
 
 
@@ -178,7 +182,7 @@ negative_config = {
     "nchar_max_word":4,
     "max_sent_total": 5,
     "corpus" : None,
-    "save_cache":'/tmp/negative_corpus_cache.pkl'
+    "save_cache":PATH_CACHE_NEGATIVES
 }
 
 
@@ -244,42 +248,61 @@ mlm_streaming_cleaning_functions = {
 
 
 # cleaning functions for the QA task
+DEFAULT_COLUMNS_TRIPLET = ['query','positives','negatives']
 qa_streaming_cleaning_functions = {
-    'embedding-data/PAQ_pairs':(clean_stream_PAQ_pairs, None, ['query','positives','negatives'],['set']),
-    'gbharti/finance-alpaca':(clean_stream_finance_alpaca,None, ['query','positives','negatives'],['input', 'output', 'text', 'instruction']),
-    'wiki_qa':(clean_stream_wiki_qa, None, ['query','positives','negatives'],['question_id', 'question', 'document_title', 'answer', 'label']),
-    'donfu/oa-stackexchange':(clean_stream_oa_stackexchange, filter_os_stackexchange, ['query','positives','negatives'], ['INSTRUCTION', 'RESPONSE', 'SOURCE', 'METADATA']),
-    'gart-labor/eclassTrainST':(clean_eclassTrainST, None, ['query','positives','negatives'], ['text', 'entailment', 'contradiction', 'label']),
-    'THUDM/webglm-qa':( clean_webglmqa, None, ['query','positives','negatives'], ['question','answer','references']),
-    'sciqa': (clean_stream_sciqa, None, ['query','positives','negatives'], ['question', 'distractor3', 'distractor1', 'distractor2', 'correct_answer', 'support']),
-    'LLukas22/lfqa_preprocessed':(clean_lfqa, None, ['query','positives','negatives'], ['question','answer','context']), #REDDIT QUESTION ANSWERS (ASK historians, ask me like I'M FIVE)
-    'npvinHnivqn/EnglishDictionary':(clean_dictionary, filter_dictionary, ['query','positives','negatives'], ['word','definition']), # dictionaries
-    'alzoubi36/policy_qa':(clean_policyqa, None, ['query','positives','negatives'],  ['id', 'title', 'context', 'question', 'answers'] ), # PRIVACYGLUE
-    'sc2qa/sc2q_commoncrawl':(clean_sc2qa, None, ['query','positives','negatives'], ['question','article','url']),
-    'yahoo_answers_topics':(clean_yahooanswers, filter_yahooanswers, ['query','positives','negatives'], ['id', 'topic', 'question_title', 'question_content', 'best_answer']),
-    'launch/gov_report_qs':(clean_govreportqa, None, ['query','positives','negatives'],['doc_id', 'summary_paragraph_index', 'document_sections', 'question_summary_pairs']),
-    'theoldmandthesea/17k_business_book':(clean_businessbookqa, None, ['query','positives','negatives'], ['question','answer','book']),
-    'sayhan/strix-philosophy-qa':(clean_strixphilosophyqa, None, ['query','positives','negatives'], ['category','question','answer']),
-    "BoltMonkey/psychology-question-answer":(clean_psychologyquestionanswer,None, ['query','positives','negatives'], ['question','answer']),
-    "sharsh02/Investopedia-Insights":(clean_investopediaqa, None, ['query','positives','negatives'], ['prompts','response'])
+    'embedding-data/PAQ_pairs':(clean_stream_PAQ_pairs, None, DEFAULT_COLUMNS_TRIPLET,['set']),
+    'gbharti/finance-alpaca':(clean_stream_finance_alpaca,None, DEFAULT_COLUMNS_TRIPLET,['input', 'output', 'text', 'instruction']),
+    'wiki_qa':(clean_stream_wiki_qa, None, DEFAULT_COLUMNS_TRIPLET,['question_id', 'question', 'document_title', 'answer', 'label']),
+    'donfu/oa-stackexchange':(clean_stream_oa_stackexchange, filter_os_stackexchange, DEFAULT_COLUMNS_TRIPLET, ['INSTRUCTION', 'RESPONSE', 'SOURCE', 'METADATA']),
+    'gart-labor/eclassTrainST':(clean_eclassTrainST, None, DEFAULT_COLUMNS_TRIPLET, ['text', 'entailment', 'contradiction', 'label']),
+    'THUDM/webglm-qa':( clean_webglmqa, None, DEFAULT_COLUMNS_TRIPLET, ['question','answer','references']),
+    'sciqa': (clean_stream_sciqa, None, DEFAULT_COLUMNS_TRIPLET, ['question', 'distractor3', 'distractor1', 'distractor2', 'correct_answer', 'support']),
+    'LLukas22/lfqa_preprocessed':(clean_lfqa, None, DEFAULT_COLUMNS_TRIPLET, ['question','answer','context']), #REDDIT QUESTION ANSWERS (ASK historians, ask me like I'M FIVE)
+    'npvinHnivqn/EnglishDictionary':(clean_dictionary, filter_dictionary, DEFAULT_COLUMNS_TRIPLET, ['word','definition']), # dictionaries
+    'alzoubi36/policy_qa':(clean_policyqa, None, DEFAULT_COLUMNS_TRIPLET,  ['id', 'title', 'context', 'question', 'answers'] ), # PRIVACYGLUE
+    'sc2qa/sc2q_commoncrawl':(clean_sc2qa, None, DEFAULT_COLUMNS_TRIPLET, ['question','article','url']),
+    'yahoo_answers_topics':(clean_yahooanswers, filter_yahooanswers, DEFAULT_COLUMNS_TRIPLET, ['id', 'topic', 'question_title', 'question_content', 'best_answer']),
+    'launch/gov_report_qs':(clean_govreportqa, None, DEFAULT_COLUMNS_TRIPLET,['doc_id', 'summary_paragraph_index', 'document_sections', 'question_summary_pairs']),
+    'theoldmandthesea/17k_business_book':(clean_businessbookqa, None, DEFAULT_COLUMNS_TRIPLET, ['question','answer','book']),
+    'sayhan/strix-philosophy-qa':(clean_strixphilosophyqa, None, DEFAULT_COLUMNS_TRIPLET, ['category','question','answer']),
+    "BoltMonkey/psychology-question-answer":(clean_psychologyquestionanswer,None, DEFAULT_COLUMNS_TRIPLET, ['question','answer']),
+    "sharsh02/Investopedia-Insights":(clean_investopediaqa, None, DEFAULT_COLUMNS_TRIPLET, ['prompts','response'])
 }
 
 
 # cleaning functions for the STS/retrieval task
 sts_streaming_cleaning_functions = {
-    'xsum':(clean_xsum, None, ['query','positives','negatives'],['summary','id','document']),
-    'embedding-data/simple-wiki':(clean_simple_wiki, None, ['query','positives','negatives'],['set']),
-    'embedding-data/coco_captions_quintets':(clean_coco_captions_quintets,None, ['query','positives','negatives'],['set']),
-    'embedding-data/SPECTER':(clean_specter,None, ['query','positives','negatives'],['set']),
-    'paws':(clean_paws,None, ['query','positives','negatives'],['id', 'sentence1', 'sentence2', 'label']), # NOTE: these are adversarial paraphrases -- the negatives should be ignored
-    'embedding-data/QQP_triplets':(clean_qqp,None, ['query','positives','negatives'],['set']),
-    "allenai/scirepeval":(clean_allenai_citeprediction, None,  ['query','positives','negatives'], ['pos','neg']),
-    "lighteval/legal_summarization":(clean_legalsum, None, ['query','positives','negatives'], ['article', 'summary']),
+    'xsum':(clean_xsum, None, DEFAULT_COLUMNS_TRIPLET,['summary','id','document']),
+    'embedding-data/simple-wiki':(clean_simple_wiki, None, DEFAULT_COLUMNS_TRIPLET,['set']),
+    'embedding-data/coco_captions_quintets':(clean_coco_captions_quintets,None, DEFAULT_COLUMNS_TRIPLET,['set']),
+    'embedding-data/SPECTER':(clean_specter,None, DEFAULT_COLUMNS_TRIPLET,['set']),
+    'paws':(clean_paws,None, DEFAULT_COLUMNS_TRIPLET,['id', 'sentence1', 'sentence2', 'label']), # NOTE: these are adversarial paraphrases -- the negatives should be ignored
+    'embedding-data/QQP_triplets':(clean_qqp,None, DEFAULT_COLUMNS_TRIPLET,['set']),
+    "allenai/scirepeval":(clean_allenai_citeprediction, None,  DEFAULT_COLUMNS_TRIPLET, ['pos','neg']),
+    "lighteval/legal_summarization":(clean_legalsum, None, DEFAULT_COLUMNS_TRIPLET, ['article', 'summary']),
     "https://drive.switch.ch/index.php/s/j9S0GRMAbGZKa1A/download?path=%2F&files=LEDGAR_2016-2019.jsonl.zip":(
         clean_ledgarlabelled, None, ['query','label'], ['provision','source']
     ),
-    "eurlex":(clean_eurlex, None,  ['query','positives','negatives'], ['celex_id', 'title', 'text', 'eurovoc_concepts']),
-    'humarin/chatgpt-paraphrases':(clean_chatgptparaphrases, filter_chatgptparaphrases, ['query','positives','negatives'], ['text','paraphrases','category','source']),
-    'gigaword':(clean_gigaword, None, ['query','positives','negatives'], ['document','summary']),
-    'pszemraj/govreport-summarization-8192':(clean_govreportsumm, None, ['query','positives','negatives'],['report', 'summary', 'input_token_len', 'summary_token_len'])
+    "eurlex":(clean_eurlex, None,  DEFAULT_COLUMNS_TRIPLET, ['celex_id', 'title', 'text', 'eurovoc_concepts']),
+    'humarin/chatgpt-paraphrases':(clean_chatgptparaphrases, filter_chatgptparaphrases, DEFAULT_COLUMNS_TRIPLET, ['text','paraphrases','category','source']),
+    'gigaword':(clean_gigaword, None, DEFAULT_COLUMNS_TRIPLET, ['document','summary']),
+    'pszemraj/govreport-summarization-8192':(clean_govreportsumm, None, DEFAULT_COLUMNS_TRIPLET,['report', 'summary', 'input_token_len', 'summary_token_len'])
+}
+
+# cleaning functions for the pair-classification task
+DEFAULT_COLUMNS_CLS = ['pair1','pair2','label','type','cls_id','n_labels']
+cls_streaming_cleaning_functions = {
+    'snli':(clean_snli, filter_snli, DEFAULT_COLUMNS_CLS,['hypothesis','premise']),
+    'multi_nli':(clean_mnli, None, DEFAULT_COLUMNS_CLS, ['promptID', 'pairID', 'premise', 'premise_binary_parse', 'premise_parse', 'hypothesis', 'hypothesis_binary_parse','hypothesis_parse','genre']),
+    'tum-nlp/cannot-dataset':(clean_cannotdatast, None, DEFAULT_COLUMNS_CLS,['hypothesis','premise']),
+    'kiddothe2b/contract-nli/contractnli_a':(clean_contractnli, None, DEFAULT_COLUMNS_CLS, ['premise','hypothesis']),
+    'kiddothe2b/contract-nli/contractnli_b':(clean_contractnli, None, DEFAULT_COLUMNS_CLS, ['premise','hypothesis']),
+    'heegyu/news-category-dataset':(clean_newscategory, filter_newscategory, DEFAULT_COLUMNS_CLS, ['category', 'headline', 'authors', 'link', 'short_description', 'date']),
+    'fkdosilovic/docee-event-classification':(clean_doceeevents, None, DEFAULT_COLUMNS_CLS, ['title', 'text', 'event_type', 'date', 'metadata']),
+    'DeveloperOats/DBPedia_Classes_level2':(clean_dbpedia_l2, None, DEFAULT_COLUMNS_CLS, ['text','l1','l2','l3']),
+    'DeveloperOats/DBPedia_Classes_level3':(clean_dbpedia_l3, None, DEFAULT_COLUMNS_CLS, ['text','l1','l2','l3']),
+    'casehold/casehold_positives':(clean_casehold_positives, None, DEFAULT_COLUMNS_CLS, ['example_id', 'citing_prompt', 'holding_0', 'holding_1', 'holding_2', 'holding_3', 'holding_4']),
+    'casehold/casehold_negatives':(clean_casehold_negatives, None, DEFAULT_COLUMNS_CLS, ['example_id', 'citing_prompt', 'holding_0', 'holding_1', 'holding_2', 'holding_3', 'holding_4']),
+    'mteb/mtop_intent':(clean_mtopintent, None, DEFAULT_COLUMNS_CLS, ['label_text','id','text']),
+    'gretelai/synthetic_pii_finance_multilingual':(clean_syntheticpiifinance, filter_syntheticpiifinance, DEFAULT_COLUMNS_CLS, ['level_0', 'index', 'document_type', 'document_description', 'expanded_type', 'expanded_description', 'language', 'language_description', 'domain', 'generated_text', 'pii_spans', 'conformance_score', 'quality_score', 'toxicity_score', 'bias_score', 'groundedness_score'])
 }

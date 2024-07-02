@@ -1,6 +1,9 @@
 import os
 import sys
-from src.data_utils.preprocess import gather_mlm_datsets_from_remote_repositories
+from src.data_utils.run import load_data
+
+data_by_task = load_data(epoch = 0)
 
 print('DONE ENTRYPOINT')
+
 

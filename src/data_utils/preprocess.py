@@ -187,7 +187,7 @@ def initialize_and_get_mlm_streaming_datasets(
     else:
         datalist_val_mlm_static, datalist_val_sentences_static, log_source_val = [],[],{}
     if not do_make_trainset:
-        print('RELOADING VAL-QA SET: iter=%s' % path_to_val_cache)
+        print('RELOADING TRAIN-MLM SET: iter=%s' % path_to_val_cache)
         with open(path_to_train_cache,'rb') as pcon:
             datalist_train_mlm_static = pickle.load(pcon)
             datalist_train_sentences_static = pickle.load(pcon)
@@ -427,7 +427,10 @@ def make_report_about_mlm_datasets(mlm_task_dataset:dict, dir_out:str=DIR_LOG)->
 
 
 
-def initialize_qa_streaming_datasets(data_streaming_config, streaming_cleaning_functions):
+def initialize_qa_streaming_datasets(
+        data_streaming_config,
+        streaming_cleaning_functions
+):
     files = data_streaming_config['files']
     qa_streaming_datsets, qa_probabilities, qa_datasizes = [],[],[]
     for (qa_nm, set_nm, prob, dataset_size, special_handling, partition_shuffle) in files:
@@ -458,6 +461,7 @@ def initialize_qa_streaming_datasets(data_streaming_config, streaming_cleaning_f
     print('done initializing the QA streaming datasets')
     return qa_streaming_datsets, qa_probabilities, qa_datasizes
 
+
 def streaming_skip(skip, list_of_streaming_datasets, probabilities, datasizes, seed=42, convert_to_static = False):
     """Function loops through a list of streaming datasets, skips a first K values based on the probabilities, and returns them"""
     out = []
@@ -466,6 +470,7 @@ def streaming_skip(skip, list_of_streaming_datasets, probabilities, datasizes, s
         skip_in_this_set = max(0,int(p)*skip)
         out.append(dset.skip(skip_in_this_set))
     return out
+
 
 def streaming_take(skip, start_proportion, chunksize, list_of_streaming_datasets, probabilities, datasizes,  convert_to_static = False):
     """Takes some examples based on a starting point within the dataset, as a proportion of its total size"""
@@ -495,6 +500,7 @@ def streaming_take(skip, start_proportion, chunksize, list_of_streaming_datasets
                 out.append(example)
         print('done %d' % j)
     return out
+
 
 def train_test_splits_from_stream_qa(
         streaming_dataset,
@@ -765,27 +771,204 @@ def initialize_and_get_triplet_streaming_datasets(
     }
 
 
-
-    
-def gather_mlm_datsets_from_remote_repositories(
-        data_streaming_config_mlm = data_streaming_config_mlm
+def initialize_and_get_classification_streaming_datasets(
+        data_streaming_config,
+        streaming_cleaning_functions,
+        start_proportion:float = None,
+        epoch:int=0,
+        seed:int=SEED,
+        path_to_val_cache:str = 'cache_val_cls.pkl',
+        path_to_train_cache_epoch:str = 'cache_train_cls_%03g.pkl',
+        do_check_english:bool = True,
+        name = 'CLS' #
 ):
-    pass
+    """Converts stream of unlabelled text data into static datasets for: pair-classification tasks"""
+    # list of files to stream
+    files = data_streaming_config['files']
+    # number of examples to take from stream for validation set
+    val_size = data_streaming_config['val_size']
+    # number of examples to take from stream for training set
+    train_chunk_size = data_streaming_config['train_chunk_size']
+    min_seq_len = data_streaming_config.get('min_seq_length', 48)
+    # normalization constant for normalizing the weights into probabilities
+    probability_normalization_const = sum([x[2] for x in files])
+
+    # where to initialize start-stream for training data
+    if start_proportion is None:
+        start_proportion = np.random.RandomState(seed+epoch).uniform()*0.99
+
+    # reload cached files
+    path_to_train_cache = None if not '%03g' in path_to_train_cache_epoch else path_to_train_cache_epoch % epoch
+    do_make_valset = not os.path.isfile(path_to_val_cache)
+    do_make_trainset = not os.path.isfile(path_to_train_cache)
+    if not do_make_valset:
+        print(f'RELOADING VAL-{name} SET: iter=%s' % path_to_val_cache)
+        with open(path_to_val_cache,'rb') as pcon:
+            datalist_val_triplet_static = pickle.load(pcon)
+        print(f'VAL-{name} SET SIZE: %d' % len(datalist_val_triplet_static))
+    else:
+        datalist_val_triplet_static = []
+    if not do_make_trainset:
+        print(f'RELOADING VAL-{name} SET: iter=%s' % path_to_val_cache)
+        with open(path_to_train_cache,'rb') as pcon:
+            datalist_train_triplet_static = pickle.load(pcon)
+        print(f'TRAIN-{name} EPOCH-%d SET SIZE: %d' % (epoch, len(datalist_train_triplet_static)))
+    else:
+        datalist_train_triplet_static = []
+
+    if (do_make_trainset or do_make_valset):
+
+        # loop through datasets
+        for (data_nm, set_nm, prob, dataset_size, special_handling, partition_shuffle), dataset_key in zip(
+            files, streaming_cleaning_functions.keys()
+        ):
+            if prob ==0:
+                continue
+            prob /= probability_normalization_const
+
+            # get cleaning & filter functions for streaming data functionality
+            clean_func, filter_func, feature_names, removefeature_names = streaming_cleaning_functions[dataset_key]
+
+            # set arguments for the load_dataset (huggingface repos)
+            load_dataset_args = {
+                'path':data_nm, 'name':set_nm, 'split':'train', 'streaming':True,  'trust_remote_code':True
+            }
+            # for other non-huggingface repos, path needs to be a "builder"
+            if data_nm.endswith('.jsonl') or data_nm.endswith('.jsonl.zip') or data_nm.endswith('.jsonl.zst'):
+                load_dataset_args.update({'path':'json','data_files':data_nm})
+
+            # special proecssing of datasets with multiple partitions
+            if bool(partition_shuffle): # or str(epoch)=='val':
+
+                n_files, n_per_file = partition_shuffle
+                dataset_size = n_per_file
+                print('trying %s initialization (shuffling through %d files)' % (data_nm, n_files))
+
+                # whether there is a filter
+                if filter_func is None:
+                    dset_stream = load_dataset(**load_dataset_args)
+                else:
+                    dset_stream = load_dataset(**load_dataset_args).filter(filter_func)
+
+                # validation set
+                if do_make_valset:
+                    # take from stream
+                    n_valset_take = max(int(prob*val_size), 1)
+                    print('take %d from %s validation'% (n_valset_take, data_nm))
+                    dset_stream_val = dset_stream.take(n_valset_take).map(clean_func).remove_columns(removefeature_names)
+                    # convert stream to a static set and do check
+                    dset_static_val_thisset = [
+                        e for e in dset_stream_val if bool(re.search(r"\w+",e['pair1'][:200]))
+                    ]
+                # training set
+                if do_make_trainset:
+                    # randomly skip a bunch from this set
+                    skip_to_start = int(start_proportion*n_per_file)
+                    take_from_this_set = max(int(round(train_chunk_size*prob)),1)
+                    print('take %d from %s training'% (take_from_this_set, data_nm))
+                    # shuffle: take a random data partition (from the dataset's list of files)
+                    dset_stream_train = dset_stream.shuffle(
+                        seed = seed+epoch, buffer_size = skip_to_start+take_from_this_set,
+                    )
+                    dset_stream_train = dset_stream_train.skip(
+                        skip_to_start # random skip through dataset to new start position
+                    ).take(
+                        take_from_this_set # take this amount for the training ste
+                    ).map(clean_func).remove_columns(removefeature_names)
+                    # convert training to static dataset
+                    dset_static_train_thisset = [
+                        e for e in dset_stream_train if bool(re.search(r"\w+",e['pair1'][:200]))
+                    ]
+            else:
+                # regular streaming
+                print('trying %s initialization' % data_nm)
+                # whether there is a filter
+                if filter_func is None:
+                    dset_stream = load_dataset(**load_dataset_args).map(clean_func).remove_columns(removefeature_names)
+                else:
+                    dset_stream = load_dataset(**load_dataset_args).filter(filter_func).map(clean_func).remove_columns(removefeature_names)
+                # take from stream
+                n_valset_take = max(int(prob*val_size), 1) # size of valset
+                print('take %d from %s validation'% (n_valset_take, data_nm))
+                skip_to_start = int(start_proportion*(dataset_size-n_valset_take)) # random point to skip to
+                n_train_take = max(int(round(train_chunk_size*prob)),1) # size of train set
+                print('take %d from %s train'% (n_train_take, data_nm))
+                if do_make_valset:
+                    dset_stream_val = dset_stream.take(n_valset_take)
+                    dset_static_val_thisset = [
+                        e for e in dset_stream_val if bool(re.search(r"\w+",e['pair1'][:200]))
+                    ]
+                if do_make_trainset:
+                    dset_stream_train = dset_stream.skip(n_valset_take+skip_to_start).take(n_train_take)
+                    dset_static_train_thisset = [
+                        e for e in dset_stream_train if bool(re.search(r"\w+",e['pair1'][:200]))
+                    ]
+            print('Done getting streams/reloading from %s' % data_nm)
+            # check language
+            if do_make_valset:
+                # discard non-english
+                dset_static_val_thisset =[
+                    e for e in dset_static_val_thisset if check_language(e['pair1'])[0] #detect(e['pair1'][:200]+" hello")=='en'
+                ]
+                print('done val language check')
+                # add to val set
+                datalist_val_triplet_static.extend(dset_static_val_thisset)
+
+            # check language
+            if do_make_trainset:
+                # discard non-english
+                dset_static_train_thisset =[
+                    e for e in dset_static_train_thisset if check_language(e['pair1'])[0]
+                ]
+                print('done train language check')
+
+                # ensure that none of the examples in the traning set are in the validation set
+                def hashtest(text1,text2):
+                    texthash = text1.lower()
+                    texthash+= "" if text2 is None else text2[:1000].lower()
+                    return texthash
+
+                if do_make_valset:
+                    val_queries = set([hashtest(q['pair1'],q['pair2']) for q in dset_static_val_thisset])
+                    dset_static_train_thisset = [
+                        s for s in dset_static_train_thisset if hashtest(s['pair1'],s['pair2']) not in val_queries
+                    ]
+
+                # add to training set
+                datalist_train_triplet_static.extend(dset_static_train_thisset)
+
+        print(f'Done collecting {name} streaming data')
+
+    if do_make_valset:
+        print('saving streamed %s validation data: %s' % (name, path_to_val_cache))
+        with open(path_to_val_cache,'wb') as pcon:
+            pickle.dump(datalist_val_triplet_static, pcon)
+
+    if do_make_trainset:
+        print('saving streamed %s training for epoch %d: %s' % (name, epoch, path_to_train_cache))
+        with open(path_to_train_cache,'wb') as pcon:
+            pickle.dump(datalist_train_triplet_static, pcon)
+
+    return {
+        'train':datalist_train_triplet_static,
+        'val':datalist_val_triplet_static,
+        'epoch':epoch,
+        'index_stream':start_proportion
+    }
 
 
-# generates the negative corpus
-negative_example_generator= NegativeExampleGenerator()
 
 
 # initialize the MLM streaming sets
 # EPOCH 1
-if True:
+def preprocess_mlm_data(epoch:int, seed:int=SEED)-> dict:
+    """Wrapper for initialize_and_get_mlm_streaming_datasets to intialize MLM task."""
     datasets_static_mlm = initialize_and_get_mlm_streaming_datasets(
         data_streaming_config = data_streaming_config_mlm,
         streaming_cleaning_functions = mlm_streaming_cleaning_functions, 
         start_proportion = None,
-        epoch=0,
-        seed=SEED,
+        epoch=epoch,
+        seed=seed,
         path_to_val_cache = data_streaming_config_mlm['path_cache_mlm_val'],
         path_to_train_cache_epoch = data_streaming_config_mlm['path_cache_mlm_train'],
         do_check_english=True,
@@ -797,39 +980,63 @@ if True:
     except:
         print('make_report_about_mlm_datasets failed')
     print('DONE MLM PREPROCESSING')
+    return datasets_static_mlm
+
+
+# initiate the CLS pair classification datasets
+def preprocess_cls_data(epoch:int, seed:int=SEED)-> dict:
+    """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
+    datasets_static_cls = initialize_and_get_classification_streaming_datasets(
+        data_streaming_config=data_streaming_config_cls,
+        streaming_cleaning_functions=cls_streaming_cleaning_functions,
+        start_proportion = None,
+        epoch=epoch,
+        seed=seed, #SEED,
+        path_to_val_cache = data_streaming_config_cls['path_cache_cls_val'],
+        path_to_train_cache_epoch = data_streaming_config_cls['path_cache_cls_train'],
+        do_check_english = True,
+        name = 'CLS' #
+    )
+    print('DONE CLS PREPROCESSING')
+    return datasets_static_cls
 
 
 # initiate the QA streaming sets
-datsets_static_qa = initialize_and_get_triplet_streaming_datasets(
-    data_streaming_config = data_streaming_config_qa,
-    streaming_cleaning_functions = qa_streaming_cleaning_functions,
-    start_proportion = None,
-    epoch=0,
-    seed=SEED,
-    path_to_val_cache = data_streaming_config_qa['path_cache_qa_val'],
-    path_to_train_cache_epoch = data_streaming_config_qa['path_cache_qa_train'],
-    do_check_english = True,
-    name = 'QA' #
-)
-print('DONE QA PREPROCESSING')
+def preprocess_qa_data(epoch:int, seed:int=SEED)-> dict:
+    """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
+    datasets_static_qa = initialize_and_get_triplet_streaming_datasets(
+        data_streaming_config = data_streaming_config_qa,
+        streaming_cleaning_functions = qa_streaming_cleaning_functions,
+        start_proportion = None,
+        epoch=epoch,
+        seed=seed,
+        path_to_val_cache = data_streaming_config_qa['path_cache_qa_val'],
+        path_to_train_cache_epoch = data_streaming_config_qa['path_cache_qa_train'],
+        do_check_english = True,
+        name = 'QA' #
+    )
+    print('DONE QA PREPROCESSING')
+    return datasets_static_qa
 
 
 # initiate the STS/retrieval/paraphrase sets
-datasets_statics_sts = initialize_and_get_triplet_streaming_datasets(
-    data_streaming_config = data_streaming_config_sts,
-    streaming_cleaning_functions = sts_streaming_cleaning_functions,
-    start_proportion = None,
-    epoch=0,
-    seed=SEED,
-    path_to_val_cache = data_streaming_config_sts['path_cache_sts_val'],
-    path_to_train_cache_epoch = data_streaming_config_sts['path_cache_sts_train'],
-    do_check_english = True,
-    name = 'STS' #
-)
+def preprocess_sts_data(epoch:int, seed:int=SEED)-> dict:
+    """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
+    datasets_statics_sts = initialize_and_get_triplet_streaming_datasets(
+        data_streaming_config = data_streaming_config_sts,
+        streaming_cleaning_functions = sts_streaming_cleaning_functions,
+        start_proportion = None,
+        epoch=epoch,
+        seed=seed,
+        path_to_val_cache = data_streaming_config_sts['path_cache_sts_val'],
+        path_to_train_cache_epoch = data_streaming_config_sts['path_cache_sts_train'],
+        do_check_english = True,
+        name = 'STS' #
+    )
+    print('DONE STS PREPROCESSING')
+    return datasets_statics_sts
 
 
-#
-
-
-
+# initialize the negative corpus
+negative_example_generator = NegativeExampleGenerator()
 

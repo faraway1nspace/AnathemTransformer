@@ -7,6 +7,8 @@ TOKEN_FUDGE_FACTOR = 1.36
 NEGATIVE_CORPUS_SIZE = 1000 # size of negative corpus for generating soft negatives for triplets
 TRAINING_CORPUS_SIZE_PER_EPOCH = 5000
 VAL_CORPUS_SIZE = 500
+TRIPLETS_N_NEGATIVES = 3
+TRIPLETS_TOPK_NEGATIVES = 15
 CACHE_DIR = "/tmp" # where caches will be saved
 PATH_CACHE_MLM_VAL = f"{CACHE_DIR}/cache_val_mlm.pkl"
 PATH_CACHE_MLM_TRAIN = f"{CACHE_DIR}/cache_train_mlm_%03g.pkl"
@@ -14,7 +16,9 @@ PATH_CACHE_QA_VAL = f"{CACHE_DIR}/cache_val_qa.pkl"
 PATH_CACHE_QA_TRAIN = f"{CACHE_DIR}/cache_train_qa_%03g.pkl"
 PATH_CACHE_STS_VAL = f"{CACHE_DIR}/cache_val_sts.pkl"
 PATH_CACHE_STS_TRAIN = f"{CACHE_DIR}/cache_train_sts_%03g.pkl"
-
+PATH_CACHE_CLS_VAL = f"{CACHE_DIR}/cache_val_cls.pkl"
+PATH_CACHE_CLS_TRAIN = f"{CACHE_DIR}/cache_train_cls_%03g.pkl"
+PATH_CACHE_NEGATIVES = f'{CACHE_DIR}/negative_corpus_cache.pkl'
 
 DIR_LOG = "/tmp/"
 DEFAULT_PROB_QA = 0.1
