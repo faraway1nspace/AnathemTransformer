@@ -12,12 +12,12 @@ def load_data(epoch:int = 0, seed:int = SEED):
     # initialize the MLM data for epoch 0
     datasets_static_mlm = preprocess_mlm_data(epoch=epoch, seed = seed)
 
+    # initialize the STS/retrieval data for epoch 0
+    datasets_static_sts = preprocess_sts_data(epoch=epoch, seed = seed)
+    
     # initialize the QA data for epoch 0
     datasets_static_qa = preprocess_qa_data(epoch=epoch, seed = seed)
     
-    # initialize the STS/retrieval data for epoch 0
-    datasets_static_sts = preprocess_sts_data(epoch=epoch, seed = seed)
-
     # initialize the CLS data for epoch 0
     datasets_static_cls = preprocess_cls_data(epoch=epoch, seed = seed)
     print('DONE')
