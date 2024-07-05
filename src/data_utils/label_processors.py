@@ -1,4 +1,25 @@
 """Label processors handle the preprocessing of multilabel-sets to adapt them for using retrieval-like tasks."""
+
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+import numpy as np
+from multiprocessing import Pool
+# Download stopwords and lemmatization resources
+
+
+def download_nltk_resource(resource):
+    try:
+        nltk.data.find(resource)
+    except LookupError:
+        nltk.download(resource.split('/')[-1])
+
+# Check and download stopwords and lemmatization resources if needed
+download_nltk_resource('corpora/stopwords')
+download_nltk_resource('corpora/wordnet')
+download_nltk_resource('tokenizers/punkt')
+
 from typing import Tuple, Union, Dict, List, Any
 
 from src.configs.constants import *

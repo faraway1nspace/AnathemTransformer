@@ -1,17 +1,27 @@
+
+import torch.utils.data.Dataset as TorchDataset
 from src.configs.constants import *
 from src.data_utils.preprocess import (
     preprocess_mlm_data,
     preprocess_cls_data,
     preprocess_qa_data,
-    preprocess_sts_data
+    preprocess_sts_data,
+    make_torch_dataset,
+    reformat_nextsentence_for_cls_task,
 )
+# spacy.language.Language
 
-def load_data(epoch:int = 0, seed:int = SEED):
-    """By epoch, load data for one epoch."""
+def load_data(
+        epoch:int = 0,
+        seed:int = SEED
+) -> Dict[str,Dict[str, TorchDataset]]:
+    """By epoch, load all task data for one epoch, convert to torch.data.utils.Dataset."""
     
     # initialize the MLM data for epoch 0
-    datasets_static_mlm = preprocess_mlm_data(epoch=epoch, seed = seed)
-
+    datasets_static_mlm, datasets_static_nextsent  = preprocess_mlm_data(
+        epoch=epoch, seed = seed
+    )
+    
     # initialize the STS/retrieval data for epoch 0
     datasets_static_sts = preprocess_sts_data(epoch=epoch, seed = seed)
     
@@ -20,13 +30,48 @@ def load_data(epoch:int = 0, seed:int = SEED):
     
     # initialize the CLS data for epoch 0
     datasets_static_cls = preprocess_cls_data(epoch=epoch, seed = seed)
-    print('DONE')
+    # DONE (re)loading the streaming data for epoch
+    
+    # make the torch dataset MLM
+    tdata_mlm = make_torch_dataset(datasets_static_mlm)
+    
+    # make the torch dataset QA
+    tdata_qa = make_torch_dataset(datasets_static_qa)
+    
+    # make the torch dataset STS
+    tdata_sts = make_torch_dataset(datasets_static_sts)
+    
+    # make the torch dataset CLS
+    tdata_cls = make_torch_dataset(datasets_static_cls)
+    
+    print('DONE loading all tasks and making torch Datasets')
+    
+    # merge the NextSentence Datsaet into the CLS task (i.e., predict next sentence or not)
+    tdata_cls['train'].integrate_another_dataset(
+        list_of_newdata = dataset_static_mlm['train']['nextsentence'],
+        function_to_reformatdata = reformat_nextsentence_for_cls_task,
+        dataset_name = 'nextsentence',
+    )
+    tdata_cls['val'].integrate_another_dataset(
+        list_of_newdata = dataset_static_mlm['val']['nextsentence'],
+        function_to_reformatdata = reformat_nextsentence_for_cls_task,
+        dataset_name = 'nextsentence',
+
+    )
     
     return {
-        "mlm":datasets_static_mlm,
-        "qa":datasets_static_qa,        
-        "sts":datasets_static_sts,
-        "cls":datasets_static_cls,
+        "train":{
+            "mlm":tdata_mlm['train'],
+            "qa":tdata_qa['train'],
+            "sts":tdata_sts['train'],
+            "cls":tdata_cls['train']
+        },
+        "val":{
+            "mlm":tdata_mlm['val'],
+            "qa":tdata_qa['val'],
+            "sts":tdata_sts['val'],
+            "cls":tdata_cls['val']
+        }
     }
     
     

@@ -25,6 +25,9 @@ from math import prod
 from src.configs.constants import *
 from src.configs.dataset_configs import *
 from src.configs.dataset_templates import TEXTSEPARATOR
+from src.dataclasses import (
+    MLMDataPerEpoch, NextSentenceDataPerEpoch, QADataPerEpoch, STSDataPerEpoch, CLSDataPerEpoch
+)
 from src.data_utils.data_utils import (
     check_language, check_is_code, nwords_quick, flatten
 )
@@ -65,7 +68,7 @@ def convert_streaming_dataset_to_static_corpus(
     return examples_static_mlm, examples_static_nextsentence
 
 
-def convert_sequence_into_nextsentence_pairs(list_of_sentences:List[str]):
+def convert_sequence_into_nextsentence_pairs(list_of_sentences:List[str]) -> Dict[str,str]:
     """Converts a list of sentences into a list of dicts, with next-sentence pairs."""
     n = len(list_of_sentences)
 
@@ -97,14 +100,14 @@ def convert_sequence_into_nextsentence_pairs(list_of_sentences:List[str]):
 
 
 def chunk_docs_into_chunks_and_sentences(
-    list_of_strings,
+    list_of_strings:List[str],
     nlp=None,
-    config_chunking=None,
-    seed = 42,
-    fieldname='text',
-    min_number_of_sentence_for_nextsentence_prediction = 17
+    config_chunking:dict=None,
+    seed:int = SEED,
+    fieldname:str='text',
+    min_number_of_sentence_for_nextsentence_prediction:int = NEXTSENTENCE_MIN_N_SENTENCES
 ):
-    """Splits long docs into chunks that do next exceet max_seq_len, as well as sentences for next-sentence-prediction """
+    """Splits long docs into chunks that do next exceet max_seq_len, as well as sentences for next-sentence-prediction."""
     if nlp is None:
         nlp = spacy.load("en_core_web_sm")
         nlp.add_pipe("sentencizer")
@@ -138,7 +141,7 @@ def chunk_docs_into_chunks_and_sentences(
         if do_accept:
             # mlm gets the text-strings chunked to size 512
             examples_static_chunks.extend(example_parsed)
-            if len(parsed_sentences)> min_number_of_sentence_for_nextsentence_prediction: #4:
+            if len(parsed_sentences)> min_number_of_sentence_for_nextsentence_prediction: 
                 # sentences for next sentence prediction: make triplet of s1,s2,opposite, where opposites get label=1
                 examples_static_nextsentence.extend(
                     convert_sequence_into_nextsentence_pairs(parsed_sentences)
@@ -156,7 +159,7 @@ def initialize_and_get_mlm_streaming_datasets(
         path_to_val_cache:str = PATH_CACHE_MLM_VAL,
         path_to_train_cache_epoch:str = PATH_CACHE_MLM_TRAIN,
         do_check_english:bool = True
-)->Dict[str,Union[str, Dict[str,str]]]:
+)->Dict[str, Union[MLMDataPerEpoch, NextSentenceDataPerEpoch]]
     """Converts stream of unlabelled text data into static datasets for: MLM task and next-sentence-prediction task."""
     # list of files to stream
     files = data_streaming_config['files']
@@ -389,18 +392,36 @@ def initialize_and_get_mlm_streaming_datasets(
             pickle.dump(epoch,pcon)
             pickle.dump(log_source_train,pcon)
     # return the training and validation sets
+    #return {
+    #    'train':{
+    #        'mlm':datalist_train_mlm_static,
+    #        'nextsentence':datalist_train_sentences_static
+    #    },
+    #    'val':{
+    #        'mlm':datalist_val_mlm_static,
+    #        'nextsentence':datalist_val_sentences_static
+    #    },
+    #    'epoch':epoch,
+    #    'index_stream':start_proportion,
+    #    'log_source':{'train':log_source_train, 'val':log_source_val}
+    #}
     return {
-        'train':{
-            'mlm':datalist_train_mlm_static,
-            'nextsentence':datalist_train_sentences_static
-        },
-        'val':{
-            'mlm':datalist_val_mlm_static,
-            'nextsentence':datalist_val_sentences_static
-        },
-        'epoch':epoch,
-        'index_stream':start_proportion,
-        'log_source':{'train':log_source_train, 'val':log_source_val}
+        'mlm':MLMDataPerEpoch(
+            train=datalist_train_mlm_static,
+            val=datalist_val_mlm_static,
+            epoch=epoch,
+            index_stream=start_proportion,
+            taskname='mlm',
+            log_source={'train':log_source_train, 'val':log_source_val}
+        ),
+        'nextsentence':NextSentenceDataPerEpoch(
+            train=datalist_train_sentences_static,
+            val=datalist_val_sentences_static,
+            epoch=epoch,
+            index_stream=start_proportion,
+            taskname='mlm',
+            log_source={'train':log_source_train, 'val':log_source_val}
+        )            
     }
 
 
@@ -563,7 +584,7 @@ def train_test_splits_from_stream_qa(
         'train':train_corpus_list,
         'val':val_corpus_list,
         'epoch':0,
-        'index_stream':train_start_proportion
+        'index_stream':train_start_proportion,
     }
 
 
@@ -577,7 +598,7 @@ def initialize_and_get_triplet_streaming_datasets(
     path_to_train_cache_epoch:str = 'cache_train_qa_%03g.pkl',
     do_check_english = True,
     name = 'QA' #
-):
+)->Union[QADataPerEpoch, STSDataPerEpoch]:
     """Converts stream of unlabelled text data into static datasets for: for Triplet data tasks (QA-task/IR-task)"""
     # list of files to stream
     print('Initializing the streaming-QA to static-dataset procedure...')
@@ -714,7 +735,11 @@ def initialize_and_get_triplet_streaming_datasets(
                         )
                     ]
                 if do_make_trainset:
-                    dset_stream_train = dset_stream.skip(n_valset_take+skip_to_start).take(n_train_take)
+                    dset_stream_train = dset_stream.skip(
+                        n_valset_take+skip_to_start
+                    ).take(
+                        n_train_take
+                    )
                     dset_static_train_thisset = [
                         e for e in dset_stream_train if (
                             (e['query'] is not None)
@@ -727,7 +752,8 @@ def initialize_and_get_triplet_streaming_datasets(
             if do_make_valset:
                 # discard non-english
                 dset_static_val_thisset =[
-                    e for e in dset_static_val_thisset if check_language(e['query'])[0] #detect(e['query'][:200]+" hello")=='en'
+                    e for e in dset_static_val_thisset
+                    if check_language(e['query'])[0] 
                 ]
                 print('done val language check')
                 # add to val set
@@ -737,7 +763,8 @@ def initialize_and_get_triplet_streaming_datasets(
             if do_make_trainset:
                 # discard non-english
                 dset_static_train_thisset =[
-                    e for e in dset_static_train_thisset if check_language(e['query'])[0] #detect(e['query'][:200] +" hello")=='en'
+                    e for e in dset_static_train_thisset
+                    if check_language(e['query'])[0] 
                 ]
                 print('done train language check')
 
@@ -745,7 +772,8 @@ def initialize_and_get_triplet_streaming_datasets(
                 if do_make_valset:
                     val_queries = set([q['query'] for q in dset_static_val_thisset])
                     dset_static_train_thisset = [
-                        s for s in dset_static_train_thisset if s['query'] not in val_queries
+                        s for s in dset_static_train_thisset
+                        if s['query'] not in val_queries
                     ]
 
                 # add to training set
@@ -763,11 +791,12 @@ def initialize_and_get_triplet_streaming_datasets(
         with open(path_to_train_cache,'wb') as pcon:
             pickle.dump(datalist_train_triplet_static, pcon)
 
-    return {
-        'train':datalist_train_triplet_static,
-        'val':datalist_val_triplet_static,
-        'epoch':epoch,
-        'index_stream':start_proportion
+    return QADataPerEpoch(
+        train=datalist_train_triplet_static,
+        val=datalist_val_triplet_static,
+        epoch=epoch,
+        index_stream=start_proportion,
+        taskname=name
     }
 
 
@@ -781,7 +810,7 @@ def initialize_and_get_classification_streaming_datasets(
         path_to_train_cache_epoch:str = 'cache_train_cls_%03g.pkl',
         do_check_english:bool = True,
         name = 'CLS' #
-):
+) -> CLSDataPerEpoch:
     """Converts stream of unlabelled text data into static datasets for: pair-classification tasks"""
     # list of files to stream
     files = data_streaming_config['files']
@@ -949,11 +978,12 @@ def initialize_and_get_classification_streaming_datasets(
         with open(path_to_train_cache,'wb') as pcon:
             pickle.dump(datalist_train_triplet_static, pcon)
 
-    return {
-        'train':datalist_train_triplet_static,
-        'val':datalist_val_triplet_static,
-        'epoch':epoch,
-        'index_stream':start_proportion
+    return CLSDataPerEpoch(
+        train=datalist_train_triplet_static,
+        val=datalist_val_triplet_static,
+        epoch=epoch,
+        index_stream=start_proportion,
+        taskname=name
     }
 
 
@@ -961,7 +991,7 @@ def initialize_and_get_classification_streaming_datasets(
 
 # initialize the MLM streaming sets
 # EPOCH 1
-def preprocess_mlm_data(epoch:int, seed:int=SEED)-> dict:
+def preprocess_mlm_data(epoch:int, seed:int=SEED)-> Dict[str, Union[MLMDataPerEpoch,NextSentenceDataPerEpoch]]:
     """Wrapper for initialize_and_get_mlm_streaming_datasets to intialize MLM task."""
     datasets_static_mlm = initialize_and_get_mlm_streaming_datasets(
         data_streaming_config = data_streaming_config_mlm,
@@ -984,7 +1014,7 @@ def preprocess_mlm_data(epoch:int, seed:int=SEED)-> dict:
 
 
 # initiate the CLS pair classification datasets
-def preprocess_cls_data(epoch:int, seed:int=SEED)-> dict:
+def preprocess_cls_data(epoch:int, seed:int=SEED)-> CLSDataPerEpoch:
     """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
     datasets_static_cls = initialize_and_get_classification_streaming_datasets(
         data_streaming_config=data_streaming_config_cls,
@@ -1002,7 +1032,7 @@ def preprocess_cls_data(epoch:int, seed:int=SEED)-> dict:
 
 
 # initiate the QA streaming sets
-def preprocess_qa_data(epoch:int, seed:int=SEED)-> dict:
+def preprocess_qa_data(epoch:int, seed:int=SEED)-> QADataPerEpoch:
     """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
     datasets_static_qa = initialize_and_get_triplet_streaming_datasets(
         data_streaming_config = data_streaming_config_qa,
@@ -1020,7 +1050,7 @@ def preprocess_qa_data(epoch:int, seed:int=SEED)-> dict:
 
 
 # initiate the STS/retrieval/paraphrase sets
-def preprocess_sts_data(epoch:int, seed:int=SEED)-> dict:
+def preprocess_sts_data(epoch:int, seed:int=SEED)-> TaskDataPerEpoch:
     """Wrapper for initialize_and_get_classification_streaming_datasets to intialize CLS task."""
     datasets_statics_sts = initialize_and_get_triplet_streaming_datasets(
         data_streaming_config = data_streaming_config_sts,
