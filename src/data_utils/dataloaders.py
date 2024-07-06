@@ -378,7 +378,7 @@ class DatasetPairClassification(torch_data.Dataset):
 
                 # other samples with the same class (and positive)
                 # `class` is the original dataset class, label = {different, same}
-                idx_this_class = [1
+                idx_this_class = [
                     i for i,d
                     in enumerate(self.data[datasetname])
                     if d['class'] == labelclass and d['label']==label

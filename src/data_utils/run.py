@@ -6,9 +6,8 @@ from src.data_utils.preprocess import (
     preprocess_cls_data,
     preprocess_qa_data,
     preprocess_sts_data,
-    make_torch_dataset,
-    reformat_nextsentence_for_cls_task,
 )
+from src.data_utils.dataloaders import make_torch_datasets, reformat_nextsentence_for_cls_task
 # spacy.language.Language
 
 def load_data(
