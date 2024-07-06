@@ -705,7 +705,7 @@ def make_torch_datasets(
         
         # initialize the classification training dataset
         torch_data = {'val':None,'train':None}
-        for split_name in ['val','train']
+        for split_name in ['val','train']:
             
             # make the base torch data
             torch_data[split_name] = DatasetPairClassification(
@@ -725,7 +725,7 @@ def make_torch_datasets(
         has_ledgar = any(list(map(lambda x:x['subtype']=='ledgar', task_data['train'])))
         has_eurlex = any(list(map(lambda x:x['subtype']=='eurlex', task_data['train'])))
 
-        # generic case
+        # generic case with no special datasets
         torch_data = {
             "val":DatasetTriplets(
                 list_of_data = [
@@ -745,6 +745,7 @@ def make_torch_datasets(
                 topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different nega
                 negative_corpus_method = NEGATIVE_CORPUS_METHOD_STS
             )
+        }
         
         # convert to torch dataset (train)
         if has_ledgar:
@@ -816,4 +817,4 @@ def make_torch_datasets(
         
         return torch_data
     
-    raise NotImplementedError(f'returned unrecognized class {str(taskdata)}')
+    raise NotImplementedError(f'returned unrecognized class {str(task_data)}')

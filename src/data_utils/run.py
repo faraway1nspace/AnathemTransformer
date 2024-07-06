@@ -54,8 +54,7 @@ def load_data(
     tdata_cls['val'].integrate_another_dataset(
         list_of_newdata = dataset_static_mlm['val']['nextsentence'],
         function_to_reformatdata = reformat_nextsentence_for_cls_task,
-        dataset_name = 'nextsentence',
-
+        dataset_name = 'nextsentence'
     )
     
     return {
