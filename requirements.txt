@@ -1,0 +1,7 @@
+torch==2.3.0
+transformers==4.41.2
+datasets==2.20.0
+zstandard==0.22.0
+rank_bm25==0.2.2
+langdetect==1.0.9
+pynndescent==0.5.13

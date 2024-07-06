@@ -26,7 +26,12 @@ from src.configs.constants import *
 from src.configs.dataset_configs import *
 from src.configs.dataset_templates import TEXTSEPARATOR
 from src.dataclasses import (
-    MLMDataPerEpoch, NextSentenceDataPerEpoch, QADataPerEpoch, STSDataPerEpoch, CLSDataPerEpoch
+    TaskDataPerEpoch,
+    MLMDataPerEpoch, 
+    NextSentenceDataPerEpoch, 
+    QADataPerEpoch, 
+    STSDataPerEpoch, 
+    CLSDataPerEpoch
 )
 from src.data_utils.data_utils import (
     check_language, check_is_code, nwords_quick, flatten
@@ -159,7 +164,7 @@ def initialize_and_get_mlm_streaming_datasets(
         path_to_val_cache:str = PATH_CACHE_MLM_VAL,
         path_to_train_cache_epoch:str = PATH_CACHE_MLM_TRAIN,
         do_check_english:bool = True
-)->Dict[str, Union[MLMDataPerEpoch, NextSentenceDataPerEpoch]]
+)->Dict[str, Union[MLMDataPerEpoch, NextSentenceDataPerEpoch]]:
     """Converts stream of unlabelled text data into static datasets for: MLM task and next-sentence-prediction task."""
     # list of files to stream
     files = data_streaming_config['files']
@@ -797,7 +802,7 @@ def initialize_and_get_triplet_streaming_datasets(
         epoch=epoch,
         index_stream=start_proportion,
         taskname=name
-    }
+    )
 
 
 def initialize_and_get_classification_streaming_datasets(
@@ -984,7 +989,7 @@ def initialize_and_get_classification_streaming_datasets(
         epoch=epoch,
         index_stream=start_proportion,
         taskname=name
-    }
+    )
 
 
 

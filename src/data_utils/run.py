@@ -1,5 +1,5 @@
 
-import torch.utils.data.Dataset as TorchDataset
+from torch.utils.data import Dataset as TorchDataset
 from src.configs.constants import *
 from src.data_utils.preprocess import (
     preprocess_mlm_data,
