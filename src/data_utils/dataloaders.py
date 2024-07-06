@@ -752,7 +752,7 @@ def make_torch_datasets(
             # special case for Ledgar
             torch_data_train_ledgar = DatasetTripletsSimilarityByCoLabel(
                 list_of_data=[
-                    example for example in task_data.train,
+                    example for example in task_data.train
                     if (
                         example['type']=='sts_by_textlabel'
                         and
@@ -786,7 +786,7 @@ def make_torch_datasets(
             # special case for eurlex
             torch_data_train_eurlex = DatasetTripletsSimilarityByCoLabel(
                 list_of_data=[
-                    example for example in task_data.train,
+                    example for example in task_data.train
                     if (
                         example['type']=='sts_by_textlabel'
                         and

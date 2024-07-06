@@ -358,51 +358,6 @@ class LabelProcesserLedgar(LabelProcesser):
         # next, calculate the similarities between all pairs of keys
         return label_corpus, label2lem
 
-
-class DatasetTripletsSimilarityByCoLabel(DatasetTriplets):
-
-    def process(self, list_of_data):
-        """Makes (query,pos,neg)-triplets, converts samples to dataframe for pytorch iteration"""
-
-        # initialize the LabelProcessor
-        label_processor = self.label_processor_class(
-            examples = list_of_data,
-            textname = self.focal_text_name
-        )
-
-        # find positives
-        list_of_data = label_processor.find_positives(list_of_data)
-
-        # only do ones with positives (otherwise no point)
-        #list_of_data = [example for example in list_of_data if len(example['positives'])>0]
-        #print(len(list_of_data))
-
-        # find negatives
-        list_of_data = label_processor.find_negatives(list_of_data, n_negatives=self.n_negatives)
-        print(len(list_of_data))
-
-        # loop through the data and add each triplets
-        self._loop_through_list_of_data_and_add_to_selfdata(list_of_data = list_of_data)
-
-        # harden the dataset to pandas dataframe
-        df = self.sample_data_and_make_static_dataframe(self.data)
-        return df #pd.DataFrame({})
-
-    def _build_corpus_of_potential_negatives(self):
-        pass
-
-    def _find_negative(self):
-        pass
-
-    def _find_positives_and_add_to_data(self):
-        """For data that has a label, this can be used to artifically find and create synthetic positives"""
-        pass
-
-    def _find_negatives_and_add_to_data(self):
-       pass
-
-
-
 class LabelProcesserEurlex(LabelProcesser):
     """Preprocesses labels of EURLEX for semantic similarity, as well as functionality for finding positive and negative pairs"""
 
