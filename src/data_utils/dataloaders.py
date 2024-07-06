@@ -692,7 +692,7 @@ def make_torch_datasets(
                 negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
             ),
             'train':DatasetTriplets(
-                list_of_data = task_data.train
+                list_of_data = task_data.train,
                 n_negatives= TRIPLETS_N_NEGATIVES,
                 topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES,
                 negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
@@ -759,7 +759,7 @@ def make_torch_datasets(
                     )
                 ],
                 n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex
+                label_processor_class = LabelProcesserEurlex,
                 seed = SEED
             )
             torch_data_val_ledgar = DatasetTripletsSimilarityByCoLabel(
@@ -772,7 +772,7 @@ def make_torch_datasets(
                     )
                 ],
                 n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserLedgar
+                label_processor_class = LabelProcesserLedgar,
                 seed = SEED
             )
             # extend the basic (sts-triplet) data with ledgar examples
@@ -793,7 +793,7 @@ def make_torch_datasets(
                     )
                 ],
                 n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex
+                label_processor_class = LabelProcesserEurlex,
                 seed = SEED
             )
             torch_data_val_eurlex = DatasetTripletsSimilarityByCoLabel(
@@ -806,7 +806,7 @@ def make_torch_datasets(
                     )
                 ],
                 n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex
+                label_processor_class = LabelProcesserEurlex,
                 seed = SEED
             )            
             # extend the basic (sts-triplet) data with ledgar examples
