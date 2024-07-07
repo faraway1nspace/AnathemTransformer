@@ -6,6 +6,7 @@ from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 import numpy as np
 from multiprocessing import Pool
+import re
 # Download stopwords and lemmatization resources
 
 

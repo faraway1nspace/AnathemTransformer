@@ -1,5 +1,6 @@
 """Dataloaders for sampling data for huggingface Trainers."""
 import os
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from rank_bm25 import BM25Okapi
@@ -127,15 +128,15 @@ class DatasetTriplets(torch_data.Dataset):
                 s for s in potential_corpus
                 if len(s)>40 and len(s.split(" "))>10
             ]
-            negative_example_generator= NegativeExampleGenerator(
-                n_reps = 1, #
-                tfidf_nfeatures = 4000,
-                nchar_max_paragraph=3000,
-                nword_max=100,
-                nchar_max_word=4,
-                save_cache = 'negative_sampler_%d-%s.pkl' % (len(potential_corpus), potential_corpus[0][0]),
-                corpus = potential_corpus
-            )
+            #negative_example_generator= NegativeExampleGenerator(
+            #    n_reps = 1, #
+            #    tfidf_nfeatures = 4000,
+            #    nchar_max_paragraph=3000,
+            #    nword_max=100,
+            #    nchar_max_word=4,
+            #    save_cache = 'negative_sampler_%d-%s.pkl' % (len(potential_corpus), potential_corpus[0][0]),
+            #    corpus = potential_corpus
+            #)
             return {'retriever':negative_example_generator, 'corpus':potential_corpus}
 
     def _find_negative(
@@ -680,24 +681,6 @@ def make_torch_datasets(
             "val":MLMDataset(text = task_data.val),
             "train":MLMDataset(text = task_data.train)
         }
-    
-    # make torch dataset for QA tasks
-    if isinstance(task_data, QADataPerEpoch):
-        assert task_data.taskname == 'qa'
-        return {
-            'val':DatasetTriplets(
-                list_of_data = task_data.val,
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different negatives, use BM25 and discard these topk
-                negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
-            ),
-            'train':DatasetTriplets(
-                list_of_data = task_data.train,
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES,
-                negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
-            )
-        }
 
     # make torch dataset for QA tasks for CLS task (DatasetPairClassification)
     if isinstance(task_data, CLSDataPerEpoch):
@@ -718,103 +701,119 @@ def make_torch_datasets(
         
         return torch_data
     
-    # make torch dataset for STS/retrieval-like task
-    if isinstance(task_data, STSDataPerEpoch):
-        
-        # special cases for multilabelled datasets (need to convert to triplets)
-        has_ledgar = any(list(map(lambda x:x['subtype']=='ledgar', task_data['train'])))
-        has_eurlex = any(list(map(lambda x:x['subtype']=='eurlex', task_data['train'])))
+    # make torch dataset for QA tasks
+    if isinstance(task_data, QADataPerEpoch) or isinstance(task_data, STSDataPerEpoch):
+        if task_data.taskname == 'qa':
+            return {
+                'val':DatasetTriplets(
+                    list_of_data = task_data.val,
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different negatives, use BM25 and discard these topk
+                    negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
+                ),
+                'train':DatasetTriplets(
+                    list_of_data = task_data.train,
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES,
+                    negative_corpus_method = NEGATIVE_CORPUS_METHOD_QA
+                )
+            }
+        elif task_data.taskname == 'sts':
 
-        # generic case with no special datasets
-        torch_data = {
-            "val":DatasetTriplets(
-                list_of_data = [
-                    x for x in task_data.val
-                    if x.get('type','na') == 'sts_triplet'
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different nega
-                negative_corpus_method = NEGATIVE_CORPUS_METHOD_STS
-            ),
-            "train":DatasetTriplets(
-                list_of_data = [
-                    x for x in task_data.train
-                    if x.get('type','na') == 'sts_triplet'
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different nega
-                negative_corpus_method = NEGATIVE_CORPUS_METHOD_STS
-            )
-        }
-        
-        # convert to torch dataset (train)
-        if has_ledgar:
-            # special case for Ledgar
-            torch_data_train_ledgar = DatasetTripletsSimilarityByCoLabel(
-                list_of_data=[
-                    example for example in task_data.train
-                    if (
-                        example['type']=='sts_by_textlabel'
-                        and
-                        example['subtype']=='ledgar'
-                    )
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex,
-                seed = SEED
-            )
-            torch_data_val_ledgar = DatasetTripletsSimilarityByCoLabel(
-                list_of_data=[
-                    example for example in task_data.val
-                    if (
-                        example['type']=='sts_by_textlabel'
-                        and
-                        example['subtype']=='ledgar'
-                    )
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserLedgar,
-                seed = SEED
-            )
-            # extend the basic (sts-triplet) data with ledgar examples
-            torch_data['train'].extend([torch_data_train_ledgar])
-            torch_data['val'].extend([torch_data_val_ledgar])
-            assert len(torch_data['train'])>len(torch_data_train_ledgar)
-            assert len(torch_data['val'])>len(torch_data_val_ledgar)
-        
-        if has_eurlex:
-            # special case for eurlex
-            torch_data_train_eurlex = DatasetTripletsSimilarityByCoLabel(
-                list_of_data=[
-                    example for example in task_data.train
-                    if (
-                        example['type']=='sts_by_textlabel'
-                        and
-                        example['subtype']=='eurlex'
-                    )
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex,
-                seed = SEED
-            )
-            torch_data_val_eurlex = DatasetTripletsSimilarityByCoLabel(
-                list_of_data=[
-                    example for example in task_data.val
-                    if (
-                        example['type']=='sts_by_textlabel'
-                        and
-                        example['subtype']=='eurlex'
-                    )
-                ],
-                n_negatives= TRIPLETS_N_NEGATIVES,
-                label_processor_class = LabelProcesserEurlex,
-                seed = SEED
-            )            
-            # extend the basic (sts-triplet) data with ledgar examples
-            torch_data['train'].extend([torch_data_train_eurlex])
-            torch_data['val'].extend([torch_data_val_eurlex])
-            assert len(torch_data['val'])>len(torch_data_val_eurlex)
-        
-        return torch_data
+            # special cases for multilabelled datasets (need to convert to triplets)
+            has_ledgar = any(list(map(lambda x:x.get('subtype','na')=='ledgar', task_data.train)))
+            has_eurlex = any(list(map(lambda x:x.get('subtype','na')=='eurlex', task_data.train)))
+
+            # generic case with no special datasets
+            torch_data = {
+                "val":DatasetTriplets(
+                    list_of_data = [
+                        x for x in task_data.val
+                        if x.get('type','na') == 'sts_triplet'
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different nega
+                    negative_corpus_method = NEGATIVE_CORPUS_METHOD_STS
+                ),
+                "train":DatasetTriplets(
+                    list_of_data = [
+                        x for x in task_data.train
+                        if x.get('type','na') == 'sts_triplet'
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    topk_negatives_discard=TRIPLETS_TOPK_NEGATIVES, # to get similar but different nega
+                    negative_corpus_method = NEGATIVE_CORPUS_METHOD_STS
+                )
+            }
+            
+            # convert to torch dataset (train)
+            if has_ledgar:
+                # special case for Ledgar
+                torch_data_train_ledgar = DatasetTripletsSimilarityByCoLabel(
+                    list_of_data=[
+                        example for example in task_data.train
+                        if (
+                            example['type']=='sts_by_textlabel'
+                            and
+                            example['subtype']=='ledgar'
+                        )
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    label_processor_class = LabelProcesserEurlex,
+                    seed = SEED
+                )
+                torch_data_val_ledgar = DatasetTripletsSimilarityByCoLabel(
+                    list_of_data=[
+                        example for example in task_data.val
+                        if (
+                            example['type']=='sts_by_textlabel'
+                            and
+                            example['subtype']=='ledgar'
+                        )
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    label_processor_class = LabelProcesserLedgar,
+                    seed = SEED
+                )
+                # extend the basic (sts-triplet) data with ledgar examples
+                torch_data['train'].extend([torch_data_train_ledgar])
+                torch_data['val'].extend([torch_data_val_ledgar])
+                assert len(torch_data['train'])>len(torch_data_train_ledgar)
+                assert len(torch_data['val'])>len(torch_data_val_ledgar)
+            
+            if has_eurlex:
+                # special case for eurlex
+                torch_data_train_eurlex = DatasetTripletsSimilarityByCoLabel(
+                    list_of_data=[
+                        example for example in task_data.train
+                        if (
+                            example['type']=='sts_by_textlabel'
+                            and
+                            example['subtype']=='eurlex'
+                        )
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    label_processor_class = LabelProcesserEurlex,
+                    seed = SEED
+                )
+                torch_data_val_eurlex = DatasetTripletsSimilarityByCoLabel(
+                    list_of_data=[
+                        example for example in task_data.val
+                        if (
+                            example['type']=='sts_by_textlabel'
+                            and
+                            example['subtype']=='eurlex'
+                        )
+                    ],
+                    n_negatives= TRIPLETS_N_NEGATIVES,
+                    label_processor_class = LabelProcesserEurlex,
+                    seed = SEED
+                )            
+                # extend the basic (sts-triplet) data with ledgar examples
+                torch_data['train'].extend([torch_data_train_eurlex])
+                torch_data['val'].extend([torch_data_val_eurlex])
+                assert len(torch_data['val'])>len(torch_data_val_eurlex)
+            
+            return torch_data
     
     raise NotImplementedError(f'returned unrecognized class {str(task_data)}')

@@ -164,7 +164,7 @@ def initialize_and_get_mlm_streaming_datasets(
         path_to_val_cache:str = PATH_CACHE_MLM_VAL,
         path_to_train_cache_epoch:str = PATH_CACHE_MLM_TRAIN,
         do_check_english:bool = True
-)->Dict[str, Union[MLMDataPerEpoch, NextSentenceDataPerEpoch]]:
+) -> Tuple[MLMDataPerEpoch, NextSentenceDataPerEpoch]:
     """Converts stream of unlabelled text data into static datasets for: MLM task and next-sentence-prediction task."""
     # list of files to stream
     files = data_streaming_config['files']
@@ -410,8 +410,8 @@ def initialize_and_get_mlm_streaming_datasets(
     #    'index_stream':start_proportion,
     #    'log_source':{'train':log_source_train, 'val':log_source_val}
     #}
-    return {
-        'mlm':MLMDataPerEpoch(
+    return (
+        MLMDataPerEpoch(
             train=datalist_train_mlm_static,
             val=datalist_val_mlm_static,
             epoch=epoch,
@@ -419,7 +419,7 @@ def initialize_and_get_mlm_streaming_datasets(
             taskname='mlm',
             log_source={'train':log_source_train, 'val':log_source_val}
         ),
-        'nextsentence':NextSentenceDataPerEpoch(
+        NextSentenceDataPerEpoch(
             train=datalist_train_sentences_static,
             val=datalist_val_sentences_static,
             epoch=epoch,
@@ -427,7 +427,7 @@ def initialize_and_get_mlm_streaming_datasets(
             taskname='mlm',
             log_source={'train':log_source_train, 'val':log_source_val}
         )            
-    }
+    )
 
 
 def make_report_about_mlm_datasets(mlm_task_dataset:dict, dir_out:str=DIR_LOG)->None:
@@ -602,7 +602,7 @@ def initialize_and_get_triplet_streaming_datasets(
     path_to_val_cache:str = 'cache_val_qa.pkl',
     path_to_train_cache_epoch:str = 'cache_train_qa_%03g.pkl',
     do_check_english = True,
-    name = 'QA' #
+    name = 'qa' #
 )->Union[QADataPerEpoch, STSDataPerEpoch]:
     """Converts stream of unlabelled text data into static datasets for: for Triplet data tasks (QA-task/IR-task)"""
     # list of files to stream
@@ -801,6 +801,7 @@ def initialize_and_get_triplet_streaming_datasets(
         val=datalist_val_triplet_static,
         epoch=epoch,
         index_stream=start_proportion,
+        log_source={},
         taskname=name
     )
 
@@ -814,7 +815,7 @@ def initialize_and_get_classification_streaming_datasets(
         path_to_val_cache:str = 'cache_val_cls.pkl',
         path_to_train_cache_epoch:str = 'cache_train_cls_%03g.pkl',
         do_check_english:bool = True,
-        name = 'CLS' #
+        name = 'cls' #
 ) -> CLSDataPerEpoch:
     """Converts stream of unlabelled text data into static datasets for: pair-classification tasks"""
     # list of files to stream
@@ -988,6 +989,7 @@ def initialize_and_get_classification_streaming_datasets(
         val=datalist_val_triplet_static,
         epoch=epoch,
         index_stream=start_proportion,
+        log_source={},
         taskname=name
     )
 
@@ -1030,7 +1032,7 @@ def preprocess_cls_data(epoch:int, seed:int=SEED)-> CLSDataPerEpoch:
         path_to_val_cache = data_streaming_config_cls['path_cache_cls_val'],
         path_to_train_cache_epoch = data_streaming_config_cls['path_cache_cls_train'],
         do_check_english = True,
-        name = 'CLS' #
+        name = 'cls' #
     )
     print('DONE CLS PREPROCESSING')
     return datasets_static_cls
@@ -1048,7 +1050,7 @@ def preprocess_qa_data(epoch:int, seed:int=SEED)-> QADataPerEpoch:
         path_to_val_cache = data_streaming_config_qa['path_cache_qa_val'],
         path_to_train_cache_epoch = data_streaming_config_qa['path_cache_qa_train'],
         do_check_english = True,
-        name = 'QA' #
+        name = 'qa' #
     )
     print('DONE QA PREPROCESSING')
     return datasets_static_qa
@@ -1066,7 +1068,7 @@ def preprocess_sts_data(epoch:int, seed:int=SEED)-> TaskDataPerEpoch:
         path_to_val_cache = data_streaming_config_sts['path_cache_sts_val'],
         path_to_train_cache_epoch = data_streaming_config_sts['path_cache_sts_train'],
         do_check_english = True,
-        name = 'STS' #
+        name = 'sts' #
     )
     print('DONE STS PREPROCESSING')
     return datasets_statics_sts

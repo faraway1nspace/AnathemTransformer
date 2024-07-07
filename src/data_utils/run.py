@@ -21,28 +21,29 @@ def load_data(
     datasets_static_mlm, datasets_static_nextsent  = preprocess_mlm_data(
         epoch=epoch, seed = seed
     )
+
+    # initialize the QA data for epoch 0
+    datasets_static_qa = preprocess_qa_data(epoch=epoch, seed = seed)
     
     # initialize the STS/retrieval data for epoch 0
     datasets_static_sts = preprocess_sts_data(epoch=epoch, seed = seed)
     
-    # initialize the QA data for epoch 0
-    datasets_static_qa = preprocess_qa_data(epoch=epoch, seed = seed)
-    
     # initialize the CLS data for epoch 0
     datasets_static_cls = preprocess_cls_data(epoch=epoch, seed = seed)
     # DONE (re)loading the streaming data for epoch
+    # Next, we make torch.data.util.Dataset for the tasks
     
     # make the torch dataset MLM
-    tdata_mlm = make_torch_dataset(datasets_static_mlm)
+    tdata_mlm = make_torch_datasets(datasets_static_mlm)
     
     # make the torch dataset QA
-    tdata_qa = make_torch_dataset(datasets_static_qa)
+    tdata_qa = make_torch_datasets(datasets_static_qa)
     
     # make the torch dataset STS
-    tdata_sts = make_torch_dataset(datasets_static_sts)
+    tdata_sts = make_torch_datasets(datasets_static_sts)
     
     # make the torch dataset CLS
-    tdata_cls = make_torch_dataset(datasets_static_cls)
+    tdata_cls = make_torch_datasets(datasets_static_cls)
     
     print('DONE loading all tasks and making torch Datasets')
     

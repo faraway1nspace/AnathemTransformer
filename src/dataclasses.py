@@ -7,7 +7,7 @@ class TaskDataPerEpoch:
     val:List[Dict[str,Union[str,List[str]]]]
     epoch:int
     index_stream:float
-    log_source:dict
+    log_source:Optional[dict]
     taskname:str
 
 
@@ -40,6 +40,7 @@ class QADataPerEpoch(TaskDataPerEpoch):
     val:List[Dict[str,Union[str,List[str]]]]
     epoch:int
     index_stream:float
+    log_source:Optional[dict]
     taskname:str = 'qa'
 
 
@@ -51,6 +52,7 @@ class STSDataPerEpoch(TaskDataPerEpoch):
     val:List[str]
     epoch:int
     index_stream:float
+    log_source:Optional[dict]
     taskname:str = 'sts'
 
 
@@ -61,6 +63,7 @@ class CLSDataPerEpoch(TaskDataPerEpoch):
     val:List[str]
     epoch:int
     index_stream:float
+    log_source:Optional[dict]
     taskname:str = 'cls'
     
     
