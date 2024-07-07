@@ -48,13 +48,13 @@ def load_data(
     print('DONE loading all tasks and making torch Datasets')
     
     # merge the NextSentence Datsaet into the CLS task (i.e., predict next sentence or not)
-    tdata_cls['train'].integrate_another_dataset(
-        list_of_newdata = dataset_static_mlm['train']['nextsentence'],
+    tdata_cls['train']._integrate_another_dataset(
+        list_of_newdata = datasets_static_nextsent.train,
         function_to_reformatdata = reformat_nextsentence_for_cls_task,
         dataset_name = 'nextsentence',
     )
-    tdata_cls['val'].integrate_another_dataset(
-        list_of_newdata = dataset_static_mlm['val']['nextsentence'],
+    tdata_cls['val']._integrate_another_dataset(
+        list_of_newdata = datasets_static_nextsent.val,
         function_to_reformatdata = reformat_nextsentence_for_cls_task,
         dataset_name = 'nextsentence'
     )
