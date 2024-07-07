@@ -338,6 +338,10 @@ class DatasetPairClassification(torch_data.Dataset):
 
         # harden the dataset to pandas dataframe
         data_flatten = self.flatten_data(self.data)
+  
+        # strip columns not in all units of data
+        data_flatten = self._strip_columns(data_flatten)
+
         if not inplace:
             return data_flatten
         self.df = data_flatten
@@ -577,12 +581,19 @@ class DatasetPairClassification(torch_data.Dataset):
                 'class':classlabel
             })
 
-    def flatten_data(self, data):
-        """Converts data to a giant list"""
+    def flatten_data(self, data:Dict[str,List[Dict[str,Any]]])->List[Dict[str,Any]]:
+        """Converts multiple lists of datsaets into a flat list of one large dataset."""
         data_all_flat = []
-        for datasetname, subdataset in self.data.items():
+        for datasetname, subdataset in data.items():
             data_all_flat += subdataset
         return data_all_flat
+
+    def _strip_columns(self, data:List[Dict[str, Any]])->List[Dict[str, Any]]:
+        """Ensures all the units of data has the same columns by discarding odd-ones-out."""
+        commonset = set(data[0].keys())
+        for e in data[1::3]:
+            commonset.intersection_update(e.keys())
+        return [{k:v for k,v in e.items() if k in commonset} for e in data]
 
     def _integrate_another_dataset(
         self,
@@ -625,6 +636,8 @@ class DatasetPairClassification(torch_data.Dataset):
         self._make_mask()
         # harden the dataset to pandas dataframe
         data_flatten = self.flatten_data(self.data)
+        # strip columns
+        data_flatten = self._strip_columns(data_flatten)
         self.df = data_flatten
         print('done integrating new dataset %s' % dataset_name)
 
