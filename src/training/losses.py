@@ -1,5 +1,6 @@
 from torch import nn,Tensor
 from torch.nn.functional import relu,cosine_similarity
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
 
 
 # MLM distillation loss function (kl-divergence between teacher and student outputs)
@@ -16,7 +17,7 @@ loss_fn_mlmpooling_distil = nn.MSELoss()
 
 # QA-task cosine triplet loss
 def cosine_triplet_loss(
-    anchor:torch.Tensor, pos:torch.Tensor, neg:torch.Tensor, margin_triplet:float = 10.0
+    anchor:Tensor, pos:Tensor, neg:Tensor, margin_triplet:float = 10.0
 ):
     """Cosine similarity between two pairs (a-b,a-c) by a margin."""
     distance_pos = 1-cosine_similarity(anchor, pos)

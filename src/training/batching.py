@@ -1,4 +1,9 @@
+import torch
+from torch import Tensor
+from torch.utils.data import Dataset
 from transformers import DataCollatorForWholeWordMask
+
+from src.configs.constants import MAX_SEQ_LENGTH,SEED
 from src.model.tokenizers import CustomTokenizer
 
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
@@ -52,7 +57,7 @@ class DataCollatorForWholeWordMaskAnamod:
 class LengthBatchSampler(torch.utils.data.Sampler):
     def __init__(
         self,
-        dataset:torch_data.Dataset,
+        dataset:Dataset,
         batch_size:int,
         drop_last:bool=True,
         get_item_len:Callable= (lambda x: len(x)),
