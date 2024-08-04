@@ -58,7 +58,7 @@ class ExperimentTracker:
         self.n_steps_eval = n_steps_eval
         self.current_step = -1 # step for this epoch (not global step)
         self.current_epoch = 0 # global epoch
-        self.global_step = -1
+        self.global_step = 0 # global step
         self.latest_checkpoint = None
         self.checkpoint_every_n_steps = 0 # depreceated
         self.max_steps_in_epoch = max_steps_in_epoch
