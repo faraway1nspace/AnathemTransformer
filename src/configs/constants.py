@@ -22,6 +22,7 @@ PATH_CACHE_CLS_TRAIN = f"{CACHE_DIR}/cache_train_cls_%03g.pkl"
 PATH_CACHE_NEGATIVES = f'{CACHE_DIR}/negative_corpus_cache.pkl'
 NEGATIVE_CORPUS_METHOD_STS = 'ann-tfidf'
 NEGATIVE_CORPUS_METHOD_QA = 'ann-tfidf' #'bm25'
+DISTILLATION_TEMPERATURE = 1.5
 
 DIR_LOG = "/content/drive/MyDrive/ScriptsPrograms/ml_anathem_transformer/cached_data/"
 DEFAULT_PROB_QA = 0.1

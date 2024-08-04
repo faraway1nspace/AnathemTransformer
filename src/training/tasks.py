@@ -1,8 +1,9 @@
-from src.configs.constants import MAX_SEQ_LENGTH, SEED
+import torch
 from torch import nn, Tensor, device
 from torch.utils.data import DataLoader, Dataset
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
 
+from src.configs.constants import MAX_SEQ_LENGTH, SEED, TOKEN_FUDGE_FACTOR, DISTILLATION_TEMPERATURE 
 from src.model.model_utils import batch_to_device
 from src.training.batching import LengthBatchSampler
 from src.training.losses import (
@@ -222,9 +223,9 @@ class AnathemTaskMLM(Task):
 
             # Soften probabilities and compute distillation loss
             loss_mlm_distil = loss_fn_mlm_distil(
-                    F.log_softmax(mlm_student / distillation_temperature, dim=-1),
-                    F.softmax(mlm_teacher.logits / distillation_temperature, dim=-1)
-            ) * (distillation_temperature ** 2)
+                    F.log_softmax(mlm_student / DISTILLATION_TEMPERATURE, dim=-1),
+                    F.softmax(mlm_teacher.logits / DISTILLATION_TEMPERATURE, dim=-1)
+            ) * (DISTILLATION_TEMPERATURE ** 2)
 
             # calculate loss between embedding vs. teacher embedding
             loss_mlm_emb = loss_fn_mlmpooling_distil(embed_student[1], embed_teacher)

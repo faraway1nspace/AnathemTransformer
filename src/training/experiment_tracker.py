@@ -4,6 +4,7 @@ import json
 import hashlib
 import csv
 from pathlib import Path
+import numpy as np
 from typing import Dict, List, Any
 from transformers import BertConfig
 import pandas as pd
