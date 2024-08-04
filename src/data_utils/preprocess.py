@@ -39,7 +39,6 @@ from src.data_utils.data_utils import (
 from src.data_utils.example_processor import ExampleProcessor, NegativeExampleGenerator
 
 
-
 def convert_streaming_dataset_to_static_corpus(
     streaming_dataset:Dataset,
     skip:int=0,
@@ -119,9 +118,9 @@ def chunk_docs_into_chunks_and_sentences(
 
     if config_chunking is None:
         config_chunking = {
-            'max_seq_length':512,
-            'min_seq_length':48,
-            'max_chunk_size':6,
+            'max_seq_length':MAX_SEQ_LENGTH,
+            'min_seq_length':MIN_SEQ_LENGTH,
+            'max_chunk_size':MAX_CHUNK_SIZE,
             'min_sentence_len':20,
             'seed':seed
         }
@@ -326,6 +325,11 @@ def initialize_and_get_mlm_streaming_datasets(
                     seed=seed+epoch,
                     nlp=nlp
                 )
+                # ensure number of next-sentence predictions are << number of MLM samples
+                n_val_nexsentence_keep = max(len(dset_val_chunked_for_mlm)//3,5)
+                if (len(dset_val_nextsentence)>n_val_nexsentence_keep) and bool(dset_val_nextsentence):
+                    idx_val_nextsentence_keep = np.random.RandomState(seed+epoch).choice(list(range(len(dset_val_nextsentence))),size=n_val_nexsentence_keep)
+                    dset_val_nextsentence = [dset_val_nextsentence[i] for i in idx_val_nextsentence_keep]
                 print('done val longtext chunking')
                 # add to val set
                 datalist_val_mlm_static.extend(dset_val_chunked_for_mlm)
@@ -357,6 +361,11 @@ def initialize_and_get_mlm_streaming_datasets(
                     seed=seed+epoch,
                     nlp=nlp
                 )
+                # ensure number of next-sentence predictions are << number of MLM samples
+                n_train_nexsentence_keep = max(len(dset_train_chunked_for_mlm)//3,5)
+                if (len(dset_train_nextsentence)>n_train_nexsentence_keep) and bool(dset_train_nextsentence):
+                    idx_train_nextsentence_keep = np.random.RandomState(seed+epoch).choice(list(range(len(dset_train_nextsentence))),size=n_train_nexsentence_keep)
+                    dset_train_nextsentence = [dset_train_nextsentence[i] for i in idx_train_nextsentence_keep]
                 print('done trains longtext chunking')
 
                 # ensure that none of the examples in the traning set are in the validation set
