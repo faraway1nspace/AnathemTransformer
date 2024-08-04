@@ -12,7 +12,6 @@ from transformers.models.bert.modeling_bert import BertEncoder
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.tokenization_utils_base import BatchEncoding
 from transformers.utils import PaddingStrategy
-
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
 
 from src.model.tokenizers import CustomTokenizer
@@ -656,7 +655,7 @@ class CheapMLPIntegrativeLayer(nn.Module):
 
 
 
-def make_config(
+def make_config_anathem(
     modelstring:str = "distilroberta-base",
     num_transformer_stacks:int = 3,
     scale_ratio2:float = 0.5,

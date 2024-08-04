@@ -1,3 +1,4 @@
+import numpy as np
 from torch import nn,Tensor
 from torch.nn.functional import relu,cosine_similarity
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable

@@ -1,5 +1,6 @@
 import torch
 from torch import nn, Tensor, device
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
 
@@ -380,7 +381,7 @@ class AnathemTaskTriplet(Task):
         with torch.no_grad():
             # to do this, I'd need to have the original text, and NOT pre-tokenized text -> ha, with my custom collator, I do have the text
             pooled_teacher = {
-                k:teacher_emb(
+                k:self.teachers['emb'](
                     input_text=batch[k],
                     prepend_type = k, # query, pos, neg
                 ) for k in self.TEXT_NAMES

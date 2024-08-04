@@ -106,6 +106,16 @@ class ExperimentTracker:
         if self.current_step>-1:
             self.is_run_reloaded = True
 
+    def get_epoch(self):
+        """At algo initialization, check which is the current training epoch."""
+        if self.current_epoch<0:
+            return 0
+        if self.max_steps_in_epoch is None:
+            return self.current_epoch
+        if self.current_step >= self.max_steps_in_epoch:
+            return self.current_epoch+1
+        return self.current_epoch
+
     def declare_stats(self, stats_names: List[str]):
         """Declare which stats to monitor."""
         for stat in stats_names:

@@ -1,18 +1,21 @@
+import torch
 from torch import Tensor, device
 from transformers import AutoModel, AutoTokenizer
 from typing import Dict,Any,List
 
+from src.model.model_utils import batch_to_device
+from src.configs.constants import MAX_SEQ_LENGTH, SEED
 
 class TeacherEmbedder:
     """Wrapper for an sbert Teacher embedding model for istillation."""
     def __init__(
         self,
-        pretrained_name = 'mixedbread-ai/mxbai-embed-large-v1',
+        pretrained_name = 'mixedbread-ai/mxbai-embed-large-v1', # 'intfloat/e5-large-v2'
         device:device=None,
         query_prefix:str = "Represent this sentence for searching relevant passages: ",
         passage_prefix:str="",
         pooling:str='cls'
-    ): # 'intfloat/e5-large-v2'
+    ): 
         self.pretrained_name = pretrained_name
         self.teacher_tokenizer = AutoTokenizer.from_pretrained(pretrained_name)
         self.teacher_embedder = AutoModel.from_pretrained(pretrained_name)
@@ -34,8 +37,8 @@ class TeacherEmbedder:
     def pooling(self, last_hidden_states: Tensor, attention_mask: Tensor)->Tensor:
         """Pooling methods to convert sequence embedding to paragraph/sent embedding, by CLS token or mean pooling."""
         if self.pooling_method == 'cls':
-            return cls_pool(last_hidden_states, attention_mask)
-        return average_pool(last_hidden_states, attention_mask)
+            return self.cls_pool(last_hidden_states, attention_mask)
+        return self.average_pool(last_hidden_states, attention_mask)
 
     def forward(self, input_text:List[str], prepend:str = "", prepend_type:str|None=None):
         if prepend_type is not None and prepend_type=='query':
