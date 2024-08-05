@@ -119,7 +119,7 @@ def initialize_multitasks(
     """Initializes the tasks."""
 
     # containers for class to return
-    multitasks:Dict[str,Task] = {}
+    tasks:Dict[str,Task] = {}
     weights:List[LossWeight] = []
 
     # initialize the teacher for MLM distribution
@@ -186,7 +186,7 @@ def initialize_multitasks(
             device=target_device
         )
 
-        multitasks['mlm'] = task_mlm
+        tasks['mlm'] = task_mlm
     
     # cls task (classification)
     if 'cls' in data['train'].keys():
@@ -207,7 +207,7 @@ def initialize_multitasks(
             name="cls",
             device=target_device
         )
-        multitasks['cls'] = task_cls
+        tasks['cls'] = task_cls
 
     if 'qa' in data['train'].keys():
 
@@ -216,7 +216,7 @@ def initialize_multitasks(
             model,
             data['train']['qa'],
             data['val']['qa'],
-            teacher_query_prepend='query: ',
+            teacher_query_prepend=teacher_emb.query_prefix,
             batch_size=config_training['batch_size_qa'],
             batch_size_val=config_training['batch_size_eval'],
             weight=weight_qa_distil,
@@ -228,7 +228,7 @@ def initialize_multitasks(
             name="qa",
             device=target_device
         )
-        multitasks['qa'] = task_qa
+        tasks['qa'] = task_qa
 
     if 'sts' in data['train'].keys():
 
@@ -237,7 +237,7 @@ def initialize_multitasks(
             model,
             data['train']['sts'],
             data['val']['sts'],
-            teacher_query_prepend='passage: ',
+            teacher_query_prepend=teacher_emb.passage_prefix,
             batch_size=config_training['batch_size_qa'],
             batch_size_val=config_training['batch_size_eval'],
             weight=weights[1],
@@ -249,9 +249,9 @@ def initialize_multitasks(
             name="sts",
             device=target_device
         )
-        multitasks['sts'] = task_sts
+        tasks['sts'] = task_sts
     
-    return multitasks, weights
+    return tasks, weights
 
 
 

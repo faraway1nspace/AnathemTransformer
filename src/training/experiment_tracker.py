@@ -60,7 +60,7 @@ class ExperimentTracker:
         self.n_steps_patience = n_steps_patience
         self.n_steps_eval = n_steps_eval # run evaluation every n steps
         self.n_steps_checkpoint = n_steps_checkpoint # run checkpointing every n steps (regardless of eval)
-        self.current_step = -1 # step for this epoch (not global step)
+        self.current_step = 0 # step for this epoch (not global step)
         self.current_epoch = 0 # global epoch
         self.global_step = 0 # global step
         self.latest_checkpoint = None
@@ -148,7 +148,7 @@ class ExperimentTracker:
         return self.max_steps_in_epoch
 
     def log(self, step: int, epoch: int, stats: Dict[str, float]):
-        self.current_step = step
+        #self.current_step = step
         self.current_epoch = epoch
         for stat, value in stats.items():
             if stat in self.stats:
@@ -166,13 +166,18 @@ class ExperimentTracker:
 
     def step(self):
         self.global_step+=1
+        self.current_step+=1
 
     def do_eval(self)->bool:
+        if self.current_step<2:
+            return False
         is_eval_interval = ((self.global_step+1) % self.n_steps_eval)==0
         is_end = bool(self.max_steps_in_epoch) and (self.current_step>=self.max_steps_in_epoch)
         return is_eval_interval or is_end
 
     def do_checkpoint(self)->bool:
+        if self.current_step<2:
+            return False
         is_checkpoint_interval = ((self.current_step+1) % self.n_steps_checkpoint)==0
         is_end = bool(self.max_steps_in_epoch) and (self.current_step>=self.max_steps_in_epoch)
         return is_checkpoint_interval or is_end
@@ -203,7 +208,7 @@ class ExperimentTracker:
     def do_save_checkpoint(self) -> bool:
         return self.global_step == self.best_stat_step
 
-    def write(self):
+    def write(self)->None:
         #csv_path = self.path_to_experiment_log / f"{self.name}_{self.config_hash}.csv"
         #with open(csv_path, "w", newline="") as csvfile:
         #    writer = csv.writer(csvfile)
@@ -211,6 +216,9 @@ class ExperimentTracker:
         #    for stat, values in self.stats.items():
         #        for value in values:
         #            writer.writerow([stat, value["step"], value["epoch"], value["value"]])
+        has_stats = any([bool(v) for v in self.stats.values()])
+        if not has_stats:
+            return None
         dfs = [
             pd.DataFrame(stat_values).rename(columns={'value':stat_nm})
             for stat_nm,stat_values in self.stats.items()
