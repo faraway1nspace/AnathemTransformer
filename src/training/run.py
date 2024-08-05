@@ -7,8 +7,13 @@ from torch.cuda import is_available
 from torch.optim import Optimizer,AdamW
 from torch.optim.lr_scheduler import CyclicLR,LRScheduler
 from transformers import AutoModelForMaskedLM
+from transformers.configuration_utils import PretrainedConfig
+from transformers.models.bert.configuration_bert import BertConfig
 from transformers.tokenization_utils import PreTrainedTokenizer
+
 from torch.utils.data import Dataset
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Callable
+
 
 from src.configs.constants import MAX_SEQ_LENGTH,SEED
 from src.configs.training_config import config_training
@@ -108,6 +113,18 @@ def initialize_optimizer(
     return optimizer, scheduler
 
 
+def initialize_mlmcollator_anathem(
+    config_training:Dict[str,Any],
+    tokenizer:Union[PreTrainedTokenizer,CustomTokenizer],
+):
+    """Initializes the MLM Collator for Anathem model."""
+    # make collator for MLM task
+    custom_mlm_collate_fn = DataCollatorForWholeWordMaskAnamod(
+        tokenizer=tokenizer, 
+        mlm=True, 
+        mlm_probability=config_training['mlm_probability']
+    )
+
 def initialize_multitasks(
     data:Dict[str,Dict[str,Dataset]],
     model:nn.Module,
@@ -160,12 +177,7 @@ def initialize_multitasks(
     # mlm task
     if 'mlm' in data['train'].keys():
 
-        # make collator for MLM task
-        custom_mlm_collate_fn = DataCollatorForWholeWordMaskAnamod(
-            tokenizer=tokenizer, 
-            mlm=True, 
-            mlm_probability=config_training['mlm_probability']
-        )
+        mlm_collator_fn = initialize_mlmcollator_anathem(config_training, tokenizer)
         
         task_mlm = AnathemTaskMLM(
             model,
@@ -181,7 +193,7 @@ def initialize_multitasks(
               "mlm":teacher_mlm,
               "emb":teacher_emb,
             },
-            collate_fn=custom_mlm_collate_fn,
+            collate_fn=mlm_collator_fn,
             name="mlm",
             device=target_device
         )
@@ -252,6 +264,47 @@ def initialize_multitasks(
         tasks['sts'] = task_sts
     
     return tasks, weights
+
+
+def train_one_epoch_anathem(
+    experiment_name:str,
+    data:Dict[str,Dict[str,Dataset]],
+    epoch:int,    
+    config_training:Dict[str,Any],
+    config_model:Union[PretrainedConfig, BertConfig],
+    filename_log:str = "experiment_log.json",
+    target_device:torch.device,
+):
+    """Train the Anathem Transformer on one epoch"""
+    print('Begin training for epoch %d' % epoch)
+
+    # initialize the ExperimentTracker
+    experiment = initialize_experiment(
+        experiment_name,
+        config_training,
+        config_model,
+        filename_log,
+        stats_names = ['mlm_loss', 'mlm_distil', 'emb_distil', 'cls_loss',"qa_loss","sts_loss","sts_distil"],
+        stat_monitor='loss_multitask'
+    )
+
+    # initialize the model
+    model = initialize_anathem_model(
+        config_training,
+        config_model,
+        target_device
+    )
+
+    # initialze the optimizer for model
+    optimizer,scheduler = initialize_optimizer(
+        model, config_training
+    )
+
+
+
+
+
+
 
 
 

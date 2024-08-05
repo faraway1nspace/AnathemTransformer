@@ -103,6 +103,8 @@ class ExperimentTracker:
                 self.current_epoch = log_data.get("current_epoch", 0)
                 self.global_step = log_data.get("global_step", 0)
                 self.latest_checkpoint = log_data.get("latest_checkpoint", None)
+                if self.latest_checkpoint:
+                    self.latest_checkpoint = [Path(p) for p in self.latest_checkpoint]
                 self.checkpoint_every_n_steps = log_data.get("checkpoint_every_n_steps", 0)
                 self.time_start = log_data.get("time_start", datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"))
                 self.dir_to_checkpoints = Path(log_data.get("dir_to_checkpoints", self.dir_to_checkpoints)) #Path(os.path.join(self.dir_to_experiment, "checkpoints"))
@@ -170,6 +172,7 @@ class ExperimentTracker:
         self.current_step+=1
 
     def do_eval(self)->bool:
+        """Checks whether we are on an interval to run an evalutions: see `n_steps_eval` (or end of epoch)"""
         if self.current_step<2:
             return False
         is_eval_interval = ((self.global_step+1) % self.n_steps_eval)==0
@@ -177,6 +180,7 @@ class ExperimentTracker:
         return is_eval_interval or is_end
 
     def do_checkpoint(self)->bool:
+        """Checks whether we are on an interval to save a checkpoint: see `n_steps_checkpoint` (or end of epoch)"""
         if self.current_step<2:
             return False
         is_checkpoint_interval = ((self.current_step+1) % self.n_steps_checkpoint)==0
@@ -184,7 +188,7 @@ class ExperimentTracker:
         return is_checkpoint_interval or is_end
 
     def do_continue(self) -> bool:
-        # check if we've exceeded the total number of steps in this epoch
+        """Check if we've exceeded the total number of steps in this epoch."""
         if self.max_steps_in_epoch and (self.current_step > self.max_steps_in_epoch):
             return False
         # check if no early stopping step specified
@@ -207,9 +211,11 @@ class ExperimentTracker:
         return True
 
     def do_save_checkpoint(self) -> bool:
+        """Checks whether we should save the 'best' checkpoint"""
         return self.global_step == self.best_stat_step
 
     def write(self)->None:
+        """Exports history of gradient descent for logged-statistics."""
         #csv_path = self.path_to_experiment_log / f"{self.name}_{self.config_hash}.csv"
         #with open(csv_path, "w", newline="") as csvfile:
         #    writer = csv.writer(csvfile)
@@ -252,7 +258,9 @@ class ExperimentTracker:
                 "current_step": self.current_step,
                 "current_epoch": self.current_epoch,
                 "global_step":self.global_step,
-                "latest_checkpoint": str(self.latest_checkpoint.absolute()),
+                "latest_checkpoint": [
+                    str(self.latest_checkpoint[0].absolute()), str(self.latest_checkpoint[1].absolute())
+                ],
                 "checkpoint_every_n_steps": self.checkpoint_every_n_steps,
                 "time_start":self.time_start,
                 "dir_to_checkpoints":str(self.dir_to_checkpoints.absolute()),
@@ -310,7 +318,9 @@ class ExperimentTracker:
                 else:
                     optimizer_states['weights'].append(w)
         torch.save(optimizer_states, save_path_opt)
-        self.latest_checkpoint = save_path_model
+        self.latest_checkpoint = [
+            save_path_model, save_path_opt
+        ]
         self._save_log()
 
     def load_checkpoint(
@@ -321,9 +331,10 @@ class ExperimentTracker:
         weights:List[LossWeight]|None = None,
         method:str = "latest"
     )->Tuple[nn.Module, Optimizer, LRScheduler|None, List[LossWeight]|None]:
+        """Reloads latest checkpoint or best checkpoint"""
         assert method in ['latest','best']
-        load_path_model = self.path_to_best_model if (method=='best' and self.path_to_best_model.exists()) else self.path_to_checkpoints_model
-        load_path_opt = self.path_to_best_optimizer if (method=='best' and self.path_to_best_optimizer.exists()) else self.path_to_checkpoints_optimizer
+        load_path_model = self.path_to_best_model if (method=='best' and self.path_to_best_model.exists()) else self.latest_checkpoint[0]
+        load_path_opt = self.path_to_best_optimizer if (method=='best' and self.path_to_best_optimizer.exists()) else self.latest_checkpoint[1]
         if load_path_model.exists():
             checkpoint = torch.load(load_path_model)
             model.load_state_dict(checkpoint['model_state_dict'])
