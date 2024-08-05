@@ -30,6 +30,7 @@ class ExperimentTracker:
         optimize: str = "minimize",  # whether to max or minimize the early-stopping statistics
         n_steps_patience: int = 2000, # number of steps to weight for performance to improve before terminating training
         n_steps_eval: int = 500, # number of steps to weight until running evaluation
+        n_steps_checkpoint:int=100, # number of steps to save weights (regardless of progression)
         max_steps_in_epoch:int|None = None
     ):
         self.name = name.replace(" ","_")
@@ -44,6 +45,8 @@ class ExperimentTracker:
         self.dir_to_checkpoints.mkdir(exist_ok=True)
         self.path_to_checkpoints_model = self.dir_to_checkpoints / "model_weights.pt"
         self.path_to_checkpoints_optimizer = self.dir_to_checkpoints / "optimizer.pt"
+        self.path_to_best_model = self.dir_to_checkpoints / "model_weights_best.pt"
+        self.path_to_best_optimizer = self.dir_to_checkpoints / "optimizer_best.pt"
         # location of log
         self.path_to_experiment_log = Path(os.path.join(self.dir_to_experiment,filename_log))
         self.csv_path = os.path.join(self.dir_to_experiment,f"history_{self.name}_{self.config_hash}.csv")
@@ -55,7 +58,8 @@ class ExperimentTracker:
         self.early_stopping_stat = early_stopping_stat
         self.optimize = optimize
         self.n_steps_patience = n_steps_patience
-        self.n_steps_eval = n_steps_eval
+        self.n_steps_eval = n_steps_eval # run evaluation every n steps
+        self.n_steps_checkpoint = n_steps_checkpoint # run checkpointing every n steps (regardless of eval)
         self.current_step = -1 # step for this epoch (not global step)
         self.current_epoch = 0 # global epoch
         self.global_step = 0 # global step
@@ -92,6 +96,8 @@ class ExperimentTracker:
                 self.early_stopping_stat = log_data.get("early_stopping_stat", None)
                 self.optimize = log_data.get("optimize", "minimize")
                 self.n_steps_patience = log_data.get("n_steps_patience", 0)
+                self.n_steps_checkpoint = log_data.get("n_steps_checkpoint",100)
+                self.n_steps_eval = log_data.get("n_steps_eval",500)
                 self.current_step = log_data.get("current_step", 0)
                 self.current_epoch = log_data.get("current_epoch", 0)
                 self.global_step = log_data.get("global_step", 0)
@@ -101,6 +107,8 @@ class ExperimentTracker:
                 self.dir_to_checkpoints = Path(log_data.get("dir_to_checkpoints", self.dir_to_checkpoints)) #Path(os.path.join(self.dir_to_experiment, "checkpoints"))
                 self.path_to_checkpoints_model = Path(log_data.get("path_to_checkpoints_model", self.path_to_checkpoints_model)) #self.dir_to_checkpoints / "model_weights.pt"
                 self.path_to_checkpoints_optimizer = Path(log_data.get("path_to_checkpoints_optimizer", self.path_to_checkpoints_optimizer)) #self.dir_to_checkpoints / "optimizer.pt"
+                self.path_to_best_model = Path(log_data.get("path_to_best_model", self.path_to_best_model)) #self.dir_to_checkpoints / "model_weights.pt"
+                self.path_to_best_optimizer = Path(log_data.get("path_to_best_optimizer", self.path_to_best_optimizer)) #self.dir_to_checkpoints / "optimizer.pt"
                 self.csv_path = log_data.get("csv_path",self.csv_path)
         # check if the current is not 0 (and therefore we are re-running from some point)
         if self.current_step>-1:
@@ -164,6 +172,11 @@ class ExperimentTracker:
         is_end = bool(self.max_steps_in_epoch) and (self.current_step>=self.max_steps_in_epoch)
         return is_eval_interval or is_end
 
+    def do_checkpoint(self)->bool:
+        is_checkpoint_interval = ((self.current_step+1) % self.n_steps_checkpoint)==0
+        is_end = bool(self.max_steps_in_epoch) and (self.current_step>=self.max_steps_in_epoch)
+        return is_checkpoint_interval or is_end
+
     def do_continue(self) -> bool:
         # check if we've exceeded the total number of steps in this epoch
         if self.max_steps_in_epoch and (self.current_step > self.max_steps_in_epoch):
@@ -221,6 +234,8 @@ class ExperimentTracker:
                 "early_stopping_stat": self.early_stopping_stat,
                 "optimize": self.optimize,
                 "n_steps_patience": self.n_steps_patience,
+                "n_steps_checkpoint":self.n_steps_checkpoint,
+                "n_steps_eval":self.n_steps_eval,
                 "current_step": self.current_step,
                 "current_epoch": self.current_epoch,
                 "global_step":self.global_step,
@@ -230,6 +245,8 @@ class ExperimentTracker:
                 "dir_to_checkpoints":str(self.dir_to_checkpoints.absolute()),
                 "path_to_checkpoints_model":str(self.path_to_checkpoints_model.absolute()),
                 "path_to_checkpoints_optimizer":str(self.path_to_checkpoints_optimizer.absolute()),
+                "path_to_best_model":str(self.path_to_best_model.absolute()),
+                "path_to_best_optimizer":str(self.path_to_best_optimizer.absolute()),
                 "csv_path":self.csv_path
             }, file, indent=4)
 
@@ -243,9 +260,13 @@ class ExperimentTracker:
         model:nn.Module,
         optimizer:Optimizer,
         scheduler:LRScheduler,
-        weights:List[LossWeight]|None = None
+        weights:List[LossWeight]|None = None,
+        method:str="latest"
     ):
+        assert method in ["best","latest"]
         # save the model weights and some metadata
+        save_path_model = self.path_to_best_model if method=='best' else self.path_to_checkpoints_model
+        save_path_opt = self.path_to_best_optimizer if method=='best' else self.path_to_checkpoints_optimizer
         torch.save(
             {
                 'model_state_dict': model.state_dict(),
@@ -256,7 +277,7 @@ class ExperimentTracker:
                 'config_model':self.config_model.to_dict(),
                 'name':self.name,
                 'time':datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-            }, self.path_to_checkpoints_model
+            }, save_path_model
         )
         # save the optimizer (and scheduler and distillation weights as well, if provided)
         optimizer_states = {
@@ -275,8 +296,8 @@ class ExperimentTracker:
                     optimizer_states['weights'].append(w.state_dict())
                 else:
                     optimizer_states['weights'].append(w)
-        torch.save(optimizer_states, self.path_to_checkpoints_optimizer)
-        self.latest_checkpoint = self.path_to_checkpoints_model
+        torch.save(optimizer_states, save_path_opt)
+        self.latest_checkpoint = save_path_model
         self._save_log()
 
     def load_checkpoint(
@@ -284,10 +305,14 @@ class ExperimentTracker:
         model:nn.Module,
         optimizer:Optimizer,
         scheduler:LRScheduler|None=None,
-        weights:List[LossWeight]|None = None
+        weights:List[LossWeight]|None = None,
+        method:str = "latest"
     )->Tuple[nn.Module, Optimizer, LRScheduler|None, List[LossWeight]|None]:
-        if self.path_to_checkpoints_model.exists():
-            checkpoint = torch.load(self.path_to_checkpoints_model)
+        assert method in ['latest','best']
+        load_path_model = self.path_to_best_model if (method=='best' and self.path_to_best_model.exists()) else self.path_to_checkpoints_model
+        load_path_opt = self.path_to_best_optimizer if (method=='best' and self.path_to_best_optimizer.exists()) else self.path_to_checkpoints_optimizer
+        if load_path_model.exists():
+            checkpoint = torch.load(load_path_model)
             model.load_state_dict(checkpoint['model_state_dict'])
             #self.current_step = checkpoint['step']
             #self.current_epoch = checkpoint['epoch']
