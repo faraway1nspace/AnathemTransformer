@@ -217,22 +217,26 @@ class ExperimentTracker:
         #    for stat, values in self.stats.items():
         #        for value in values:
         #            writer.writerow([stat, value["step"], value["epoch"], value["value"]])
-        has_stats = any([bool(v) for v in self.stats.values()])
-        if not has_stats:
-            return None
-        dfs = [
-            pd.DataFrame(stat_values).rename(columns={'value':stat_nm})
-            for stat_nm,stat_values in self.stats.items()
-        ]
-        if len(dfs)==1:
-            df = dfs[0]
-        else:
-            df = pd.merge(dfs[0],dfs[1],how='inner')
-        if len(dfs)>2:
-            for df_to_merge in dfs[2:]:
-                df = pd.merge(df, df_to_merge, how='inner')
-        df.to_csv(self.csv_path,index=False)
-        print('wrote log csv to %s' % self.csv_path)
+        try:
+            has_stats = any([bool(v) for v in self.stats.values()])
+            if not has_stats:
+                return None
+            dfs = [
+                pd.DataFrame(stat_values).rename(columns={'value':stat_nm})
+                for stat_nm,stat_values in self.stats.items()
+                if bool(stat_values)
+            ]
+            if len(dfs)==1:
+                df = dfs[0]
+            else:
+                df = pd.merge(dfs[0],dfs[1],how='inner')
+            if len(dfs)>2:
+                for df_to_merge in dfs[2:]:
+                    df = pd.merge(df, df_to_merge, how='inner')
+            df.to_csv(self.csv_path,index=False)
+            print('wrote log csv to %s' % self.csv_path)
+        except:
+            print('failed to save CSV')
 
     def _save_log(self):
         with open(self.path_to_experiment_log, "w") as file:
