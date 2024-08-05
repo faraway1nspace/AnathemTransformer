@@ -87,6 +87,7 @@ class ExperimentTracker:
         self.config_hash = hashlib.md5(config_combined.encode()).hexdigest()
 
     def _load_experiment(self):
+        self.is_run_reloaded = False
         if self.path_to_experiment_log.exists():
             with open(self.path_to_experiment_log, "r") as file:
                 log_data = json.load(file)
@@ -110,9 +111,9 @@ class ExperimentTracker:
                 self.path_to_best_model = Path(log_data.get("path_to_best_model", self.path_to_best_model)) #self.dir_to_checkpoints / "model_weights.pt"
                 self.path_to_best_optimizer = Path(log_data.get("path_to_best_optimizer", self.path_to_best_optimizer)) #self.dir_to_checkpoints / "optimizer.pt"
                 self.csv_path = log_data.get("csv_path",self.csv_path)
-        # check if the current is not 0 (and therefore we are re-running from some point)
-        if self.current_step>-1:
-            self.is_run_reloaded = True
+            # check if the current is not 0 (and therefore we are re-running from some point)
+            if self.global_step>0:
+                self.is_run_reloaded = True
 
     def get_epoch(self):
         """At algo initialization, check which is the current training epoch."""
