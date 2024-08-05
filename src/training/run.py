@@ -275,7 +275,7 @@ def train_one_epoch_anathem(
     filename_log:str = "experiment_log.json",
     target_device:torch.device,
 ):
-    """Train the Anathem Transformer on one epoch"""
+    """Train the Anathem Transformer on one epoch."""
     print('Begin training for epoch %d' % epoch)
 
     # initialize the ExperimentTracker
