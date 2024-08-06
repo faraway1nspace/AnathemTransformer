@@ -6,6 +6,7 @@ from torch import nn
 from torch.cuda import is_available
 from torch.optim import Optimizer,AdamW
 from torch.optim.lr_scheduler import CyclicLR,LRScheduler
+from torch.nn.utils import clip_grad_norm_
 from transformers import AutoModelForMaskedLM
 from transformers.configuration_utils import PretrainedConfig
 from transformers.models.bert.configuration_bert import BertConfig
@@ -16,15 +17,16 @@ from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Sequenc
 
 
 from src.configs.constants import MAX_SEQ_LENGTH,SEED
-from src.configs.training_config import config_training
-from src.configs.model_anathem_config import config_model_anathem
+from src.configs.training_config import config_training as default_config_training
+from src.configs.model_anathem_config import config_model_anathem as default_config_model
+from src.data_utils.run import load_data
 from src.model.anathem_transformer import AnathemTransformer, make_config_anathem
 from src.model.tokenizers import CustomTokenizer
 from src.model.model_utils import batch_to_device
 from src.model.teachers import TeacherEmbedder
 from src.training.batching import DataCollatorForWholeWordMaskAnamod
 from src.training.experiment_tracker import ExperimentTracker
-from src.training.losses import LossWeight
+from src.training.losses import LossWeight, multtask_loss
 from src.training.tasks import (
     Task,
     AnathemTaskMLM,
@@ -50,8 +52,8 @@ def initialize_experiment(
         config_model=config_model,
         dir_to_experiments=config_training['dir_to_experiments'],  # where to save checkpoints
         filename_log=filename_log, # where to save experiment logs
-        n_steps_patience=config_training.get("steps_patience",10),
-        n_steps_eval=config_training.get("eval_steps",3)
+        n_steps_patience=config_training.get("steps_patience",20),
+        n_steps_eval=config_training.get("eval_steps",500)
     )
 
     # declare which losses to monitor
@@ -61,7 +63,7 @@ def initialize_experiment(
     experiment.declare_monitor_stat(
         stat_monitor, 
         'minimize', 
-        n_steps_patience=config_training.get("steps_patience",10)
+        n_steps_patience=config_training.get("steps_patience",20)
     )
 
     return experiment
@@ -99,6 +101,7 @@ def initialize_optimizer(
         betas=(config_training['optimizer_beta0'], 0.999)
     )
 
+    # use a cyclic learning rate with exp decrease in max lr
     scheduler = CyclicLR(
         optimizer, 
         base_lr=config_training['lr'], 
@@ -118,12 +121,15 @@ def initialize_mlmcollator_anathem(
     tokenizer:Union[PreTrainedTokenizer,CustomTokenizer],
 ):
     """Initializes the MLM Collator for Anathem model."""
+
     # make collator for MLM task
     custom_mlm_collate_fn = DataCollatorForWholeWordMaskAnamod(
         tokenizer=tokenizer, 
         mlm=True, 
         mlm_probability=config_training['mlm_probability']
     )
+    
+    return custom_mlm_collate_fn
 
 def initialize_multitasks(
     data:Dict[str,Dict[str,Dataset]],
@@ -268,15 +274,28 @@ def initialize_multitasks(
 
 def train_one_epoch_anathem(
     experiment_name:str,
-    data:Dict[str,Dict[str,Dataset]],
-    epoch:int,    
-    config_training:Dict[str,Any],
-    config_model:Union[PretrainedConfig, BertConfig],
+    config_training:Dict[str,Any]|None=None,
+    config_model:Dict[str,Any]|None=None,
     filename_log:str = "experiment_log.json",
-    target_device:torch.device,
+    target_device:torch.device|None = None,
 ):
     """Train the Anathem Transformer on one epoch."""
-    print('Begin training for epoch %d' % epoch)
+
+    # defaults: 
+    if config_training is None:
+        config_training = default_config_training
+    
+    if config_model is None:
+        config_model = default_config_model
+
+    if target_device is None:
+        if is_available():
+            target_device = torch.device('cuda')
+        else:
+            target_device = torch.device('cpu')
+
+    # initialize the BertConfig from the config dictionary
+    config_model = make_config_anathem(**default_config_model)
 
     # initialize the ExperimentTracker
     experiment = initialize_experiment(
@@ -288,6 +307,10 @@ def train_one_epoch_anathem(
         stat_monitor='loss_multitask'
     )
 
+    # get the previous epoch, and other steps
+    epoch = experiment.get_epoch()
+    print(f"Checkpoints to be saved at: {str(experiment.dir_to_checkpoints)}")
+
     # initialize the model
     model = initialize_anathem_model(
         config_training,
@@ -296,11 +319,108 @@ def train_one_epoch_anathem(
     )
 
     # initialze the optimizer for model
-    optimizer,scheduler = initialize_optimizer(
+    optimizer, scheduler = initialize_optimizer(
         model, config_training
     )
 
+    # reload the cached data - multitask, train/val split
+    data = load_data(epoch = epoch)
 
+    # initialize the tasks for multitask training
+    tasks, weights = initialize_multitasks(
+        data,
+        model,
+        model.tokenizer
+        epoch,
+        config_training,
+        target_device
+    )
+
+    # collect all the tasks into a sequence of tasks for ONE training step
+    multi_tasks = [tasks['mlm'],tasks['cls'], tasks['qa'], tasks['mlm'],tasks['cls'], tasks['sts']]
+
+    # collect all the tasks into a sequence of tasks for ONE evaluation step
+    eval_tasks = [tasks['mlm'],tasks['cls'], tasks['qa'], tasks['sts']]
+
+    # declare the maximum number of steps for this epoch
+    experiment.declare_max_steps(multi_tasks)
+
+    # reset steps for tracking gradient descent
+    step_epoch = -1
+    if experiment.is_run_reloaded:
+        for task in multi_tasks:
+            task.set_to_step(start=step_epoch, end=experiment.current_step)
+        
+        step_epoch = experiment.current_step
+        print(f"Continue training at EPOCH: {EPOCH}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
+        anamod, optimizer, scheduler, weights = experiment.load_checkpoint(
+            model, optimizer, scheduler, weights, method="latest"
+        )
+        print('Done reloading checkpoints')
+        print(experiment.best_stat)
+        print(experiment.best_stat_step)
+    else:
+        print(f"Fresh training at EPOCH: {EPOCH}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
+
+    # run gradient descent
+    while experiment.do_continue():
+        step_epoch += 1
+        print('STEP START %d' % step_epoch)
+
+        losses = {} # 
+        for task in multi_tasks:
+            optimizer.zero_grad()
+            loss = task.step() # calc loss
+            loss.backward()
+            clip_grad_norm_(task.model.parameters(), config_training['max_grad_norm'])
+            optimizer.step()
+            losses.update(task.last_loss()) # log the losses
+        
+        # evaluation and/or checkpointing
+        do_eval, do_checkpt = experiment.do_eval(), experiment.do_checkpoint()
+        if do_eval or do_checkpt:
+            if do_eval:
+                for eval_task in eval_tasks:
+                    eval_loss = eval_task.evaluate(limit=1)
+                    losses.update(eval_task.last_loss())
+                # log the multitask losse
+                losses.update({"loss_multitask":multtask_loss(losses)})
+                anamod.train()
+            
+            experiment.log(step=step_epoch, epoch=epoch, stats=losses)
+            # save the checkpoints
+            experiment.save_checkpoint(
+                model=anamod,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                weights=weights,
+                method="best" if (do_eval and experiment.do_save_checkpoint()) else "latest"
+            )
+
+            print('Saved checkpoints: %s' % str(experiment.latest_checkpoint))
+            # save the loss history as csv file
+            experiment.save()
+        
+        print(("%d:" % step_epoch) + "; ".join("%s:%0.4f" % (nm,v) for nm,v in losses.items()))
+        # accounting: schedular, weights, experment's global step
+        scheduler.step() # decrement lr
+        for w in weights:
+            w.step() # decrement the weight (less teacher-forcing over time)
+        experiment.step() # increment step in the experiments
+        print('STEP END %d' % step_epoch)
+
+    # FINISHED this epoch
+    print(f'FINISHED Epoch {epoch}')
+
+    # increment the epoch
+    experiment.current_epoch+=1
+    # reset the epoch-step
+    experiment.current_step=0
+    # save the log for next epoch
+    experiment.save()
+
+    print('EXITING')
+    return experiment
 
 
 
