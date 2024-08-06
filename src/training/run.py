@@ -279,7 +279,7 @@ def train_one_epoch_anathem(
     filename_log:str = "experiment_log.json",
     target_device:torch.device|None = None,
 ):
-    """Train the Anathem Transformer on one epoch."""
+    """Main function: Train the Anathem Transformer on one epoch."""
 
     # defaults: 
     if config_training is None:
@@ -330,7 +330,7 @@ def train_one_epoch_anathem(
     tasks, weights = initialize_multitasks(
         data,
         model,
-        model.tokenizer
+        model.tokenizer,
         epoch,
         config_training,
         target_device
@@ -352,7 +352,7 @@ def train_one_epoch_anathem(
             task.set_to_step(start=step_epoch, end=experiment.current_step)
         
         step_epoch = experiment.current_step
-        print(f"Continue training at EPOCH: {EPOCH}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
+        print(f"Continue training at EPOCH: {epoch}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
         anamod, optimizer, scheduler, weights = experiment.load_checkpoint(
             model, optimizer, scheduler, weights, method="latest"
         )
@@ -360,7 +360,7 @@ def train_one_epoch_anathem(
         print(experiment.best_stat)
         print(experiment.best_stat_step)
     else:
-        print(f"Fresh training at EPOCH: {EPOCH}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
+        print(f"Fresh training at EPOCH: {epoch}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
 
     # run gradient descent
     while experiment.do_continue():
