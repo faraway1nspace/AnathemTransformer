@@ -385,7 +385,7 @@ def train_one_epoch_anathem(
                     losses.update(eval_task.last_loss())
                 # log the multitask losse
                 losses.update({"loss_multitask":multtask_loss(losses)})
-                anamod.train()
+                model.train()
             
             experiment.log(step=step_epoch, epoch=epoch, stats=losses)
             # save the checkpoints
