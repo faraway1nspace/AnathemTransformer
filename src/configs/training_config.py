@@ -17,7 +17,7 @@ config_training = {
     "weight_distil_mlm_start":0.55,
     "weight_distil_qa_start":0.55,
     "eval_steps":250,
-    "checkpoint_steps":100,
+    "checkpoint_steps":75,
     "steps_patience":20,
     "dir_to_experiments":"/content/drive/MyDrive/ScriptsPrograms/ml_anathem_transformer/training/anathem_runs/"
 }
