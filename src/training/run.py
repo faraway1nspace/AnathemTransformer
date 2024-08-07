@@ -365,7 +365,7 @@ def train_one_epoch_anathem(
     # run gradient descent
     while experiment.do_continue():
         step_epoch += 1
-        print('STEP START %d' % step_epoch)
+        #print('STEP START %d' % step_epoch)
 
         losses = {} # 
         for task in multi_tasks:
@@ -390,7 +390,7 @@ def train_one_epoch_anathem(
             experiment.log(step=step_epoch, epoch=epoch, stats=losses)
             # save the checkpoints
             experiment.save_checkpoint(
-                model=anamod,
+                model=model,
                 optimizer=optimizer,
                 scheduler=scheduler,
                 weights=weights,
@@ -407,7 +407,7 @@ def train_one_epoch_anathem(
         for w in weights:
             w.step() # decrement the weight (less teacher-forcing over time)
         experiment.step() # increment step in the experiments
-        print('STEP END %d' % step_epoch)
+        #print('STEP END %d' % step_epoch)
 
     # FINISHED this epoch
     print(f'FINISHED Epoch {epoch}')

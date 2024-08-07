@@ -36,7 +36,7 @@ def multtask_loss(losses:Dict[str,float])->float:
 
 class LossWeight:
     """A float for weighting the teacher-loss versus task-loss (w, 1-w), with special method for decrementing by step."""
-    def __init__(self, start_value:float, decrement_per_step:float=0.0001, min:float=0.1, current_step:int =0, value:float|None=None):
+    def __init__(self, start_value:float, decrement_per_step:float=0.00005, min:float=0.1, current_step:int =0, value:float|None=None):
         self.start_value = start_value
         self.decrement_per_step = decrement_per_step
         self.min = min
