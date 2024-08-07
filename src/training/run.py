@@ -381,7 +381,7 @@ def train_one_epoch_anathem(
         if do_eval or do_checkpt:
             if do_eval:
                 for eval_task in eval_tasks:
-                    eval_loss = eval_task.evaluate(limit=1)
+                    eval_loss = eval_task.evaluate()
                     losses.update(eval_task.last_loss())
                 # log the multitask losse
                 losses.update({"loss_multitask":multtask_loss(losses)})

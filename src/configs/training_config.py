@@ -16,8 +16,8 @@ config_training = {
     "max_grad_norm":1.5,
     "weight_distil_mlm_start":0.5,
     "weight_distil_qa_start":0.5,
-    "eval_steps":4,
-    "checkpoint_steps":1,
-    "steps_patience":10,
+    "eval_steps":400,
+    "checkpoint_steps":100,
+    "steps_patience":20,
     "dir_to_experiments":"/content/drive/MyDrive/ScriptsPrograms/ml_anathem_transformer/training/anathem_runs/"
 }
