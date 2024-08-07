@@ -353,7 +353,7 @@ def train_one_epoch_anathem(
         
         step_epoch = experiment.current_step
         print(f"Continue training at EPOCH: {epoch}; STEP: {experiment.current_step}; GLOBAL STEP: {experiment.global_step}")
-        anamod, optimizer, scheduler, weights = experiment.load_checkpoint(
+        model, optimizer, scheduler, weights = experiment.load_checkpoint(
             model, optimizer, scheduler, weights, method="latest"
         )
         print('Done reloading checkpoints')
