@@ -53,7 +53,8 @@ def initialize_experiment(
         dir_to_experiments=config_training['dir_to_experiments'],  # where to save checkpoints
         filename_log=filename_log, # where to save experiment logs
         n_steps_patience=config_training.get("steps_patience",20),
-        n_steps_eval=config_training.get("eval_steps",500)
+        n_steps_eval=config_training.get("eval_steps",500),
+        n_steps_checkpoint=config_training.get("checkpoint_steps",75),
     )
 
     # declare which losses to monitor
@@ -106,10 +107,10 @@ def initialize_optimizer(
         optimizer, 
         base_lr=config_training['lr'], 
         max_lr=config_training['lr']*config_training['lr_max_mult'],
-        step_size_up=150, 
-        step_size_down=500, 
+        step_size_up=200, 
+        step_size_down=1000, 
         mode="exp_range",
-        gamma=0.9995,
+        gamma=0.99967,
         last_epoch=-1 # note this is from the STEP
     )
 

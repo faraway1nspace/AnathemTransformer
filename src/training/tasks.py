@@ -222,16 +222,16 @@ class AnathemTaskMLM(Task):
             # assert same lengths
             assert mlm_student.size() == mlm_teacher.logits.size()
 
-            # Soften probabilities and compute distillation loss
-            loss_mlm_distil = loss_fn_mlm_distil(
-                    F.log_softmax(mlm_student / DISTILLATION_TEMPERATURE, dim=-1),
-                    F.softmax(mlm_teacher.logits / DISTILLATION_TEMPERATURE, dim=-1)
-            ) * (DISTILLATION_TEMPERATURE ** 2)
+        # Soften probabilities and compute distillation loss
+        loss_mlm_distil = loss_fn_mlm_distil(
+            F.log_softmax(mlm_student / DISTILLATION_TEMPERATURE, dim=-1),
+            F.softmax(mlm_teacher.logits / DISTILLATION_TEMPERATURE, dim=-1)
+        ) * (DISTILLATION_TEMPERATURE ** 2)
 
-            # calculate loss between embedding vs. teacher embedding
-            loss_mlm_emb = loss_fn_mlmpooling_distil(embed_student[1], embed_teacher)
-            self.last_loss_log['mlm_distil']=loss_mlm_distil.cpu().detach().item()
-            self.last_loss_log['emb_distil']=loss_mlm_emb.cpu().detach().item()
+        # calculate loss between embedding vs. teacher embedding
+        loss_mlm_emb = loss_fn_mlmpooling_distil(embed_student[1], embed_teacher)
+        self.last_loss_log['mlm_distil']=loss_mlm_distil.cpu().detach().item()
+        self.last_loss_log['emb_distil']=loss_mlm_emb.cpu().detach().item()
 
         # return MLM label loss and distilloss for backprop
         return loss_mlm_distil + loss_mlm_emb
@@ -311,7 +311,7 @@ class AnathemTaskPairClassification(Task):
         """Calculates Classification loss on evaluatoin set."""
         self.model.eval()
         if limit is None:
-            limit = len(self.dl_eval)*2
+            limit = len(self.dl_eval)*10
         with torch.no_grad():
             losses = []
             # loop through eval dataloader
@@ -387,11 +387,12 @@ class AnathemTaskTriplet(Task):
                 ) for k in self.TEXT_NAMES
             }
 
-            loss_triplet_distil = sum([
-                loss_fn_mlmpooling_distil(v_student, v_teacher)
-                for v_student,v_teacher
-                in zip(embed.values(), pooled_teacher.values())
-            ])/len(embed)
+        loss_triplet_distil = sum([
+            loss_fn_mlmpooling_distil(v_student, v_teacher)
+            for v_student,v_teacher
+            in zip(embed.values(), pooled_teacher.values())
+        ])/len(embed)
+
         self.last_loss_log[f"{self.name}_distil"]=loss_triplet_distil.cpu().detach().item()
         return loss_triplet_distil
 
