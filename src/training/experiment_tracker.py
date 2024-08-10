@@ -21,7 +21,6 @@ class ExperimentTracker:
     def __init__(
         self,
         name: str, # name for this experiment
-        config_hash:str|None = None, # optional ability to set the hash for a particular experiment
         config_training: Dict[str, Any], # traning configuration for hashing the experiment
         config_model: BertConfig, # model configuration for hashing the experiment
         dir_to_experiments: str,  # where to save checkpoints
@@ -32,7 +31,8 @@ class ExperimentTracker:
         n_steps_patience: int = 2000, # number of steps to weight for performance to improve before terminating training
         n_steps_eval: int = 500, # number of steps to weight until running evaluation
         n_steps_checkpoint:int=100, # number of steps to save weights (regardless of progression)
-        max_steps_in_epoch:int|None = None
+        max_steps_in_epoch:int|None = None,
+        config_hash:str|None = None, # optional ability to set the hash for a particular experiment
     ):
         self.name = name.replace(" ","_")
         self.config_training = config_training

@@ -49,7 +49,6 @@ def initialize_experiment(
     # make the experiment tracker (and possibly reload from existing)
     experiment = ExperimentTracker(
         name=experiment_name,
-        config_hash=config_hash,
         config_training=config_training,
         config_model=config_model,
         dir_to_experiments=config_training['dir_to_experiments'],  # where to save checkpoints
@@ -57,6 +56,7 @@ def initialize_experiment(
         n_steps_patience=config_training.get("steps_patience",20),
         n_steps_eval=config_training.get("eval_steps",500),
         n_steps_checkpoint=config_training.get("checkpoint_steps",75),
+        config_hash=config_hash,
     )
 
     # declare which losses to monitor
