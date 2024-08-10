@@ -315,10 +315,10 @@ def train_one_epoch_anathem(
             "qa_loss",
             "sts_loss",
             "sts_distil",
-            "eval_mlm",
-            "eval_cls",
-            "eval_qa",
-            "eval_sts"
+            "mlm_eval",
+            "cls_vval",
+            "qa_eval",
+            "sts_eval"
         ],
         stat_monitor='loss_multitask',
         config_hash=config_hash
