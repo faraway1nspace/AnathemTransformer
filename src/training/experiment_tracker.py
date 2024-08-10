@@ -38,7 +38,7 @@ class ExperimentTracker:
         self.config_training = config_training
         self.config_model = config_model
         # hash the config to check if this is a unique experiment
-        self._hash_config(hash_name)
+        self._hash_config(config_hash)
         # all checkpoint
         self.dir_to_experiment = os.path.join(dir_to_experiments, f"{self.name}_{self.config_hash}")
         os.makedirs(self.dir_to_experiment, exist_ok=True)
