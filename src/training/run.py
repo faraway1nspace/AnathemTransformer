@@ -307,7 +307,19 @@ def train_one_epoch_anathem(
         config_training,
         config_model,
         filename_log,
-        stats_names = ['mlm_loss', 'mlm_distil', 'emb_distil', 'cls_loss',"qa_loss","sts_loss","sts_distil"],
+        stats_names = [
+            'mlm_loss', 
+            'mlm_distil', 
+            'emb_distil', 
+            'cls_loss',
+            "qa_loss",
+            "sts_loss",
+            "sts_distil",
+            "eval_mlm",
+            "eval_cls",
+            "eval_qa",
+            "eval_sts"
+        ],
         stat_monitor='loss_multitask',
         config_hash=config_hash
     )
