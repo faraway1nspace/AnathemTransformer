@@ -316,7 +316,7 @@ def train_one_epoch_anathem(
             "sts_loss",
             "sts_distil",
             "mlm_eval",
-            "cls_vval",
+            "cls_eval",
             "qa_eval",
             "sts_eval"
         ],
