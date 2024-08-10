@@ -41,13 +41,15 @@ def initialize_experiment(
     config_model:Union[PretrainedConfig, BertConfig],
     filename_log:str = "experiment_log.json",
     stats_names:List[str] = ['mlm_loss', 'mlm_distil', 'emb_distil', 'cls_loss',"qa_loss","sts_loss","sts_distil"],
-    stat_monitor:List[str]='loss_multitask'
+    stat_monitor:List[str]='loss_multitask',
+    config_hash:str|None=None
 )->ExperimentTracker:
     """Initializes the ExperimentTracker to monitor losses and gradient descent."""
     
     # make the experiment tracker (and possibly reload from existing)
     experiment = ExperimentTracker(
         name=experiment_name,
+        config_hash=config_hash,
         config_training=config_training,
         config_model=config_model,
         dir_to_experiments=config_training['dir_to_experiments'],  # where to save checkpoints
@@ -275,6 +277,7 @@ def initialize_multitasks(
 
 def train_one_epoch_anathem(
     experiment_name:str,
+    config_hash:str|None=None, # optional ability to fix the hash
     config_training:Dict[str,Any]|None=None,
     config_model:Dict[str,Any]|None=None,
     filename_log:str = "experiment_log.json",
@@ -305,7 +308,8 @@ def train_one_epoch_anathem(
         config_model,
         filename_log,
         stats_names = ['mlm_loss', 'mlm_distil', 'emb_distil', 'cls_loss',"qa_loss","sts_loss","sts_distil"],
-        stat_monitor='loss_multitask'
+        stat_monitor='loss_multitask',
+        config_hash=config_hash
     )
 
     # get the previous epoch, and other steps
