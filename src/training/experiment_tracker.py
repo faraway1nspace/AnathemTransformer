@@ -21,6 +21,7 @@ class ExperimentTracker:
     def __init__(
         self,
         name: str, # name for this experiment
+        config_hash:str|None = None, # optional ability to set the hash for a particular experiment
         config_training: Dict[str, Any], # traning configuration for hashing the experiment
         config_model: BertConfig, # model configuration for hashing the experiment
         dir_to_experiments: str,  # where to save checkpoints
@@ -37,7 +38,7 @@ class ExperimentTracker:
         self.config_training = config_training
         self.config_model = config_model
         # hash the config to check if this is a unique experiment
-        self._hash_config()
+        self._hash_config(hash_name)
         # all checkpoint
         self.dir_to_experiment = os.path.join(dir_to_experiments, f"{self.name}_{self.config_hash}")
         os.makedirs(self.dir_to_experiment, exist_ok=True)
@@ -78,13 +79,16 @@ class ExperimentTracker:
         # load experiment's saved state (if it exists)
         self._load_experiment()
 
-    def _hash_config(self):
+    def _hash_config(self, config_hash:str|None = None):
         """Hashes the configs, for saving unique configurations."""
-        config_combined = (
-            json.dumps(self.config_training, sort_keys=True) +
-            json.dumps({k:v for k,v in self.config_model.to_dict().items() if not isinstance(v,torch.device)}, sort_keys=True)
-        )
-        self.config_hash = hashlib.md5(config_combined.encode()).hexdigest()
+        if hash_name is None:
+            config_combined = (
+                json.dumps(self.config_training, sort_keys=True) +
+                json.dumps({k:v for k,v in self.config_model.to_dict().items() if not isinstance(v,torch.device)}, sort_keys=True)
+            )
+            self.config_hash = hashlib.md5(config_combined.encode()).hexdigest()
+        else:
+            self.config_hash = config_hash
 
     def _load_experiment(self):
         self.is_run_reloaded = False
