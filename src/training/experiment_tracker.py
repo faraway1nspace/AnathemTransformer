@@ -81,7 +81,7 @@ class ExperimentTracker:
 
     def _hash_config(self, config_hash:str|None = None):
         """Hashes the configs, for saving unique configurations."""
-        if hash_name is None:
+        if config_hash is None:
             config_combined = (
                 json.dumps(self.config_training, sort_keys=True) +
                 json.dumps({k:v for k,v in self.config_model.to_dict().items() if not isinstance(v,torch.device)}, sort_keys=True)
