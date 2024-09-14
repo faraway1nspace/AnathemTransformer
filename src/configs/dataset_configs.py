@@ -3,6 +3,7 @@ from src.configs.dataset_cleaners import *
 
 # MLM TASK Datasets configs per huggingface data: each entry is a: url, subset, probability, size, option(name of postprocess subsetting), shuffle?
 MLM_FILES = [
+    ("albertvillanova/legal_contracts", None, 1.1, 106000, 'mlm', False, 0.15),
     ('Hellisotherpeople/DebateSum', None, 1.5, 24647, 'mlm',False, 0.9),
     ('lukesjordan/worldbank-project-documents', None, 0.45, 15700, 'mlm', False, 0.08),
     ('64bits/lex_fridman_podcast_for_llm_vicuna',None, 0.7, 17200,'mlm',False,0.5),
@@ -32,7 +33,6 @@ MLM_FILES = [
     ('kerinin/hackernews-stories', None, 0, 31300, 'mlm', (8, 52220), 0.1), # 1.7 hackernews stories alternative: this was originally included because of discussion
     ("https://the-eye.eu/public/AI/pile_v2/data/NIH_ExPORTER_awarded_grant_text.jsonl.zst", None, 0, 985651, "mlm", False, 0.15), # still works, but may fail eventually
     ("https://drive.switch.ch/index.php/s/j9S0GRMAbGZKa1A/download?path=%2F&files=LEDGAR_2016-2019.jsonl.zip", None, 9.0, 1200000, "mlm", False, 0.2),
-    ("albertvillanova/legal_contracts", None, 1.1, 106000, 'mlm', False, 0.15),
     ("pile-of-law/pile-of-law",'r_legaladvice', 1.63, 109740, "mlm", False, 0.15),
     ("pile-of-law/pile-of-law",'exam_outlines', 0.1, 12, "mlm",False, 0.2), # useless (but interesting)
     ("pile-of-law/pile-of-law",'cc_casebooks',0.5, 59 ,"mlm",False, 0.2),
@@ -188,6 +188,7 @@ negative_config = {
 
 # cleaning function for the MLM task
 mlm_streaming_cleaning_functions = {
+    "albertvillanova/legal_contracts":(clean_legalcontractslong, None,[]),
     'Hellisotherpeople/DebateSum':(clean_debatesum, filter_debatesum,[
         '#CharsAbstract', '#CharsDocument', '#CharsExtract', '#WordsAbstract', '#WordsDocument', '#WordsExtract', 'AbsCompressionRatio', 'Abstract', 'Citation', 'DebateCamp', 'ExtCompressionRatio', 'Extract', 'Tag', 'Unnamed: 0', 'Year', 'Full-Document','OriginalDebateFileName'
     ]),
@@ -222,7 +223,6 @@ mlm_streaming_cleaning_functions = {
     'kerinin/hackernews-stories':(clean_hackernews, filter_hackernews, ['Title','Text','labels']),
     "https://the-eye.eu/public/AI/pile_v2/data/NIH_ExPORTER_awarded_grant_text.jsonl.zst":(lambda x:x, None,['meta']),
     "https://drive.switch.ch/index.php/s/j9S0GRMAbGZKa1A/download?path=%2F&files=LEDGAR_2016-2019.jsonl.zip":(clean_ledgarmlm,None,['provision','source']),
-    "albertvillanova/legal_contracts":(clean_legalcontractslong, None,[]),
     "pile-of-law/pile-of-law/r_legaladvice":(lambda x : x, None, ['created_timestamp', 'downloaded_timestamp', 'url']),
     "pile-of-law/pile-of-law/exam_outlines":(lambda x : x, None, ['created_timestamp', 'downloaded_timestamp', 'url']),
     "pile-of-law/pile-of-law/cc_casebooks":(clean_casetextbook, None, ['created_timestamp', 'downloaded_timestamp', 'url']), # clean_casetextbook
