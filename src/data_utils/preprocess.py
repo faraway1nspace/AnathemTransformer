@@ -406,19 +406,6 @@ def initialize_and_get_mlm_streaming_datasets(
             pickle.dump(epoch,pcon)
             pickle.dump(log_source_train,pcon)
     # return the training and validation sets
-    #return {
-    #    'train':{
-    #        'mlm':datalist_train_mlm_static,
-    #        'nextsentence':datalist_train_sentences_static
-    #    },
-    #    'val':{
-    #        'mlm':datalist_val_mlm_static,
-    #        'nextsentence':datalist_val_sentences_static
-    #    },
-    #    'epoch':epoch,
-    #    'index_stream':start_proportion,
-    #    'log_source':{'train':log_source_train, 'val':log_source_val}
-    #}
     return (
         MLMDataPerEpoch(
             train=datalist_train_mlm_static,
@@ -512,9 +499,6 @@ def streaming_take(skip, start_proportion, chunksize, list_of_streaming_datasets
     out = []
     normalized_p = [p/sum(probabilities) for p in probabilities]
     for j, (dset, p, size) in enumerate(zip(list_of_streaming_datasets, normalized_p, datasizes)):
-        #print(type(dset))
-        #print(type(p))
-        #print(type(size))
         # skip for valset
         skip_in_this_set = int(round(p*skip))
         # afterwards, where to start?
