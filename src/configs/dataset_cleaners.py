@@ -6,7 +6,7 @@ from src.configs.dataset_templates import *
 
 
 def random_by_char(text:str, take:int=3, charlim:int=10):
-    """Pseudo random text based on an imput text."""
+    """Pseudo random number based on an imput text. Determinisitic."""
     nums = [ord(ch) for ch in 'xqz'+text.replace(' ','')[:charlim]][(-1*take):]
     return 3*prod(nums[:2])-nums[-1]
 
@@ -105,10 +105,7 @@ def clean_ledgarmlm(x:Dict[str,Any])->Dict[str,Any]:
 
 
 def clean_casetextbook(example:Dict[str,Any])->Dict[str,Any]:
-    """Removes tables and excess \n includes somes specifics for Saylor books footmatter"""
-    # discards the first 8 percent
-    #discard = int(0.08*len(example['text']))
-    #example['text'] = example['text'][discard:].replace('\n'," ")
+    """Removes tables and excess \n includes somes specifics for Saylor books footmatter."""
     example = clean_irs_advice_mlm(example)
     # discard the first 8 lines ~ they are usually boilerplate text
     example['text'] = '\n'.join(example['text'].split('\n')[8:])
